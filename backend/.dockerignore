@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+tests/
+**/*.user
+**/appsettings.*.local.json
+**/secrets.json
+**/*.pfx
+**/*.p12
+**/*.pem
+**/*.key
+**/.env*

@@ -3,9 +3,18 @@
 .env.*
 !.env.example
 *.pfx
+*.p12
+*.pem
 *.key
 appsettings.*.local.json
 secrets.json
+
+# --- Database dumps and generated migration artifacts (docs/DEPLOYMENT.md, backend/README.md) ---
+*.dump
+*.backup
+migrate.sql
+efbundle
+efbundle.exe
 
 # --- .NET ---
 [Bb]in/

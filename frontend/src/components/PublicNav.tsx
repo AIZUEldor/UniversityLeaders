@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { homeFor, useAuth } from "@/lib/auth";
 
 const LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Bosh sahifa" },
@@ -13,12 +14,11 @@ const LINKS: { href: string; label: string }[] = [
 export function PublicNav() {
   const pathname: string = usePathname();
   const [open, setOpen] = useState<boolean>(false);
+  const { state } = useAuth();
+  const area: string = state.status === "authenticated" ? homeFor(state.user.role) : "/login";
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="bg-amber-100 px-4 py-1 text-center text-xs font-medium text-amber-900">
-        DEMO prototip — barcha ism va ma&apos;lumotlar namunaviy. Avtorizatsiya va server ulanmagan.
-      </div>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
         <Link href="/" className="text-lg font-bold text-indigo-700">
           Universitet Yetakchilari
@@ -44,8 +44,8 @@ export function PublicNav() {
               {l.label}
             </Link>
           ))}
-          <Link href="/login" className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 md:ml-2">
-            Kirish
+          <Link href={area} className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 md:ml-2">
+            {state.status === "authenticated" ? "Kabinet" : "Kirish"}
           </Link>
         </nav>
       </div>

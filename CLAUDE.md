@@ -39,6 +39,19 @@
 
 - Admin announcements are delivered to the 13 faculty leaders.
 
+## Engineering standards (permanent)
+
+- **Clean Architecture:** dependencies point inward (API → Application → Domain; Infrastructure implements Application interfaces). Domain has no framework dependencies.
+- **SOLID:** single responsibility per class/component; depend on abstractions (interfaces) at layer boundaries; extend by addition, not by editing stable code.
+- **DRY:** one source of truth for rules (roles, the 7 directions, approval hierarchy, slot rules). Reuse existing helpers/components before adding new ones.
+- **KISS:** the simplest solution that fully meets the requirement; no speculative abstractions or options.
+- **Type safety:** strict TypeScript (no `any`, avoid non-null `!` unless justified in a comment); explicit C# types and DTOs; validate all input at trust boundaries.
+- **Reusable components:** shared layouts and panels (`PrivateShell`, `ReportsCollection`, `ReportDetailView`, `RankingBoard`, `NotificationsList`) scoped by the logged-in identity — never a separate dashboard per person.
+- **UI vs business logic:** pure rules live in `frontend/src/lib` (later: backend services); components only render and call them. Public pages never render private controls.
+- **Server-side RBAC and ownership (backend):** every protected endpoint enforces role and ownership on the server (e.g. a faculty leader acts only on their own faculty; coordinators only submit their own reports). Client-side checks are UX only, never security.
+- **Accounts:** unique accounts per person, one-time temporary credentials, mandatory password change on first login, passwords hashed server-side only. The frontend never stores passwords.
+- **Soft deletion:** deactivate people instead of deleting them; keep identity, reports and audit history.
+
 ## Working rules
 
 - Never commit secrets. Real values go in `.env` (git-ignored); `.env.example` holds placeholders only.

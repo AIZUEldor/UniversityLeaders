@@ -1,61 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { ReportCard } from "@/components/ReportCard";
-import { ROLE_LABELS, canApprove, computeRanking, type Person, type RankRow, type Report } from "@/lib/data";
-import { useCurrent } from "@/lib/store";
+import { useCallback, useEffect, useState } from "react";
+import { ManagementMessage } from "@/components/admin/ManagementUi";
+import { useAuth } from "@/lib/auth";
+import { ROLE_LABELS } from "@/lib/data";
+import { reportsApi, type ReportSummary } from "@/lib/reportsApi";
 
 export default function Dashboard() {
-  const { people, reports, current } = useCurrent();
-  const byId = (id: string): Person | undefined => people.find((p: Person) => p.id === id);
+  const { state } = useAuth();
+  const [mine, setMine] = useState<ReportSummary[]>([]);
+  const [pendingReviews, setPendingReviews] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+  const isLeader = state.status === "authenticated" && state.user.role === "faculty_leader";
 
-  // Scope: faculty roles see their faculty; university coordinators see everything approved.
-  const inScope = (r: Report): boolean => current.facultyId === null || r.facultyId === current.facultyId;
-  const completed: Report[] = reports.filter((r: Report) => r.status === "approved" && inScope(r));
-  const toReview: number = reports.filter((r: Report) => {
-    const a: Person | undefined = byId(r.authorId);
-    return r.status === "pending" && a !== undefined && canApprove(current, a);
-  }).length;
-  const mine: Report[] = reports.filter((r: Report) => r.authorId === current.id);
-  const rank: RankRow | undefined = computeRanking(reports).find((row: RankRow) => row.faculty.id === current.facultyId);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [reports, queue] = await Promise.all([reportsApi.mine(), isLeader ? reportsApi.reviewQueue() : Promise.resolve([])]);
+      setMine(reports); setPendingReviews(queue.length); setError(null);
+    } catch (failure: unknown) { setError(failure); }
+    finally { setLoading(false); }
+  }, [isLeader]);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
 
-  const stats: { label: string; value: string | number }[] = [
-    ...(current.role === "faculty_leader" ? [{ label: "Tasdiqlash kutilmoqda", value: toReview }] : []),
+  const user = state.status === "authenticated" ? state.user : null;
+  const stats = [
     { label: "Mening hisobotlarim", value: mine.length },
-    { label: "Kutilayotgan hisobotlarim", value: mine.filter((r: Report) => r.status === "pending").length },
-    { label: "Bajarilgan ishlar", value: completed.length },
-    { label: "Fakultet o'rni", value: rank ? `#${rank.position}` : "—" },
+    { label: "Qoralamalarim", value: mine.filter((report) => report.status === "Draft").length },
+    { label: "Ko'rib chiqilmoqda", value: mine.filter((report) => report.status === "Submitted").length },
+    { label: "Tasdiqlangan ishlarim", value: mine.filter((report) => report.status === "Approved").length },
+    ...(isLeader ? [{ label: "Tasdiqlash navbati", value: pendingReviews }] : []),
   ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Xush kelibsiz, {current.name}</h1>
-        <p className="text-sm text-slate-500">{ROLE_LABELS[current.role]}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-2xl font-bold text-indigo-700">{s.value}</div>
-            <div className="text-xs text-slate-500">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold">Bajarilgan ishlar (tasdiqlangan)</h2>
-          <Link href="/dashboard/reports" className="text-sm text-indigo-600 hover:underline">
-            Hisobot yuborish →
-          </Link>
-        </div>
-        <div className="space-y-3">
-          {completed.slice(0, 8).map((r: Report) => (
-            <ReportCard key={r.id} report={r} author={byId(r.authorId)} />
-          ))}
-        </div>
-      </section>
-    </div>
-  );
+  return <div className="space-y-6">
+    <div><h1 className="text-2xl font-bold">Xush kelibsiz{user ? `, ${user.fullName}` : ""}</h1>{user && <p className="text-sm text-slate-500">{ROLE_LABELS[user.role]}</p>}</div>
+    {error !== null && <ManagementMessage error={error} onRetry={() => void load()} />}
+    {loading ? <p role="status" className="text-sm text-slate-500">Hisobotlar yuklanmoqda...</p> : <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">{stats.map((stat) => <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-2xl font-bold text-indigo-700">{stat.value}</div><div className="text-xs text-slate-500">{stat.label}</div></div>)}</div>}
+    <div className="flex flex-wrap gap-4 text-sm"><Link href="/dashboard/my-work" className="text-indigo-700 hover:underline">Mening ishlarim →</Link><Link href="/dashboard/reports" className="text-indigo-700 hover:underline">Yangi hisobot →</Link>{isLeader && <Link href="/dashboard/approvals" className="text-indigo-700 hover:underline">Tasdiqlash navbati →</Link>}</div>
+  </div>;
 }

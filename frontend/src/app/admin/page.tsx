@@ -1,35 +1,38 @@
 "use client";
 
-import { canApprove, type Person, type Report } from "@/lib/data";
-import { useCurrent } from "@/lib/store";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { ManagementMessage } from "@/components/admin/ManagementUi";
+import { facultiesApi, managedUsersApi } from "@/lib/adminApi";
+import { reportsApi } from "@/lib/reportsApi";
 
 export default function AdminHome() {
-  const { people, reports, announcements, current } = useCurrent();
-  const pending: number = reports.filter((r: Report) => {
-    const a: Person | undefined = people.find((p: Person) => p.id === r.authorId);
-    return r.status === "pending" && a !== undefined && canApprove(current, a);
-  }).length;
+  const [counts, setCounts] = useState({ faculties: 0, facultyLeaders: 0, universityCoordinators: 0, pending: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [faculties, leaders, coordinators, queue] = await Promise.all([
+        facultiesApi.list(), managedUsersApi("faculty-leaders").list(false),
+        managedUsersApi("university-coordinators").list(false), reportsApi.reviewQueue(),
+      ]);
+      setCounts({ faculties: faculties.length, facultyLeaders: leaders.length, universityCoordinators: coordinators.length, pending: queue.length });
+      setError(null);
+    } catch (failure: unknown) { setError(failure); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
 
-  const stats: { label: string; value: number }[] = [
-    { label: "Fakultetlar", value: 13 },
-    { label: "Foydalanuvchilar", value: people.length },
-    { label: "Mening tasdiqlashim kutilmoqda", value: pending },
-    { label: "Barcha kutilayotgan hisobotlar", value: reports.filter((r: Report) => r.status === "pending").length },
-    { label: "Tasdiqlangan hisobotlar", value: reports.filter((r: Report) => r.status === "approved").length },
-    { label: "Yuborilgan e'lonlar", value: announcements.length },
+  const stats = [
+    { label: "Fakultetlar", value: counts.faculties },
+    { label: "Faol fakultet rahbarlari", value: counts.facultyLeaders },
+    { label: "Faol universitet koordinatorlari", value: counts.universityCoordinators },
+    { label: "Tasdiqlash navbati", value: counts.pending },
   ];
-
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Umumiy ko&apos;rinish</h1>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-2xl font-bold text-indigo-700">{s.value}</div>
-            <div className="text-xs text-slate-500">{s.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <div className="space-y-6"><h1 className="text-2xl font-bold">Umumiy ko&apos;rinish</h1>
+    {error !== null && <ManagementMessage error={error} onRetry={() => void load()} />}
+    {loading ? <p role="status" className="text-sm text-slate-500">Ma&apos;lumotlar yuklanmoqda...</p> : <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{stats.map((stat) => <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-2xl font-bold text-indigo-700">{stat.value}</div><div className="text-xs text-slate-500">{stat.label}</div></div>)}</div>}
+    <Link href="/admin/approvals" className="inline-block text-sm text-indigo-700 hover:underline">Hisobotlarni ko&apos;rib chiqish →</Link>
+  </div>;
 }

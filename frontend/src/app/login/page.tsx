@@ -1,27 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { ROLE_LABELS, type Person, type Role } from "@/lib/data";
-import { useStore } from "@/lib/store";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
+import { describeError, homeFor, useAuth, type CurrentUser } from "@/lib/auth";
+import { publicApi, type PublicFaculty } from "@/lib/publicApi";
+import { usePublicRequest } from "@/lib/usePublicRequest";
 
-export default function Login() {
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <Login />
+    </Suspense>
+  );
+}
+
+function Login() {
   const router = useRouter();
-  const { people, setCurrentId } = useStore();
-  const [role, setRole] = useState<Role>("faculty_coordinator");
-  const candidates: Person[] = people.filter((p: Person) => p.role === role);
-  const [personId, setPersonId] = useState<string>(candidates[0].id);
+  const { state, login } = useAuth();
+  // From a public "Profilga kirish" link: a display hint only. It never selects an account or grants access.
+  const facultyParam: string | null = useSearchParams().get("faculty");
+  const directoryRequest = useCallback(() => (facultyParam === null ? Promise.resolve(null) : publicApi.directory()), [facultyParam]);
+  const directory = usePublicRequest(directoryRequest);
+  const context: PublicFaculty | undefined = directory.data?.faculties.find((f: PublicFaculty) => String(f.id) === facultyParam);
 
-  const pickRole = (r: Role): void => {
-    setRole(r);
-    setPersonId(people.find((p: Person) => p.role === r)!.id);
-  };
+  const [userName, setUserName] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [busy, setBusy] = useState<boolean>(false);
 
-  const onDemoLogin = (e: FormEvent<HTMLFormElement>): void => {
+  // Already signed in (e.g. opened /login in a new tab): go to the user's own area.
+  useEffect(() => {
+    if (state.status === "authenticated") router.replace(homeFor(state.user.role));
+  }, [state, router]);
+
+  const onSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    setCurrentId(personId);
-    router.push(role === "university_leader" ? "/admin" : "/dashboard");
+    setError("");
+    setBusy(true);
+    try {
+      const user: CurrentUser = await login(userName.trim(), password);
+      router.replace(homeFor(user.role)); // a pending password change is handled by the private layout
+    } catch (err: unknown) {
+      setError(describeError(err));
+    } finally {
+      setPassword("");
+      setBusy(false);
+    }
   };
 
   return (
@@ -34,43 +59,48 @@ export default function Login() {
           <p className="text-sm text-slate-500">Tizimga kirish</p>
         </div>
 
-        <form className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" onSubmit={(e) => e.preventDefault()}>
-          <input disabled placeholder="Login" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <input disabled type="password" placeholder="Parol" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
-          <button disabled className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white opacity-50">
-            Kirish
-          </button>
-          <p className="text-center text-xs text-slate-500">Haqiqiy avtorizatsiya hali ulanmagan.</p>
-        </form>
-
-        <form onSubmit={onDemoLogin} className="space-y-3 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-6">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-amber-800">DEV only — demo rol tanlash</div>
-            <p className="mt-1 text-xs text-amber-900">
-              Bu haqiqiy kirish emas va hech narsani himoya qilmaydi. Faqat prototipni sinash uchun; sahifa yangilanganda chiqib ketadi.
-            </p>
+        {context && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+            Profil: <b>{context.name}</b>. O&apos;z login va parolingiz bilan kiring.
           </div>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" noValidate>
+          {error && (
+            <p role="alert" className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {error}
+            </p>
+          )}
           <label className="block text-sm">
-            Rol
-            <select value={role} onChange={(e) => pickRole(e.target.value as Role)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5">
-              {(Object.keys(ROLE_LABELS) as Role[]).map((r: Role) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
+            Login
+            <input
+              name="username"
+              autoComplete="username"
+              required
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            />
           </label>
           <label className="block text-sm">
-            Demo foydalanuvchi
-            <select value={personId} onChange={(e) => setPersonId(e.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5">
-              {candidates.map((p: Person) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            Parol
+            <input
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            />
           </label>
-          <button className="w-full rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-400">Demo sifatida kirish</button>
+          <button
+            disabled={busy || state.status === "loading" || userName.trim() === "" || password === ""}
+            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {busy ? "Kirilmoqda..." : "Kirish"}
+          </button>
+          <p className="text-center text-xs text-slate-500">Login va vaqtinchalik parolni universitet rahbari yoki fakultet rahbari beradi.</p>
         </form>
       </div>
     </main>

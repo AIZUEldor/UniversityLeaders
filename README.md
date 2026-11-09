@@ -12,7 +12,7 @@ Platform for managing university and faculty leadership work: role-based report 
 
 ## Status
 
-Repository foundation only. Applications are not scaffolded yet.
+Frontend (`frontend/`) and backend (`backend/`) are integrated; production deployment is prepared but not performed: see `docs/DEPLOYMENT.md` and `docs/PRODUCTION_READINESS.md`.
 
 ## Setup
 

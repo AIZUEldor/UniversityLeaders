@@ -1,0 +1,70 @@
+# Production Blueprint for UniversityLeaders. NOT applied: creating it in Render provisions paid resources.
+# Follow docs/DEPLOYMENT.md first. Secrets use `sync: false` (entered in the Render dashboard, never committed).
+# Independent of the existing free "university-leaders-demo" service, which is not touched by this file.
+
+databases:
+  - name: university-leaders-db
+    region: frankfurt
+    plan: basic-256mb            # paid plan: daily backups (point-in-time recovery on higher plans)
+    postgresMajorVersion: "17"
+    databaseName: university_leaders
+    user: ul_api
+    ipAllowList: []              # no access from the internet; the API uses the internal hostname
+
+services:
+  - type: web
+    name: university-leaders-api
+    runtime: docker
+    region: frankfurt
+    plan: starter                # shell access (offline recovery) and pre-deploy commands need a paid plan
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    autoDeploy: false            # deploy deliberately; never on every push
+    healthCheckPath: /health
+    preDeployCommand: /app/efbundle   # applies pending EF Core migrations before the new version goes live
+    # Secret file (dashboard -> Environment -> Secret Files): dataprotection.pfx -> /etc/secrets/dataprotection.pfx
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: "8080"
+      - key: ForwardedHeaders__Enabled
+        value: "true"            # Render's proxy is the only entry point (TLS terminated there)
+      - key: Auth__SameSite
+        value: Lax               # requires frontend and API on the same site (custom domains, docs/DEPLOYMENT.md)
+      - key: Cors__AllowedOrigins__0
+        sync: false              # https://<frontend domain>
+      - key: Database__ConnectionString
+        sync: false              # Host=<internal host>;Port=5432;Database=university_leaders;Username=ul_api;Password=...;SSL Mode=Require
+      - key: ObjectStorage__ServiceUrl
+        sync: false              # https endpoint of the private S3-compatible bucket
+      - key: ObjectStorage__Bucket
+        sync: false
+      - key: ObjectStorage__Region
+        sync: false              # "us-east-1" for MinIO/Cloudflare R2, the bucket region for AWS S3
+      - key: ObjectStorage__AccessKey
+        sync: false
+      - key: ObjectStorage__SecretKey
+        sync: false
+      - key: DataProtection__Certificate__Path
+        value: /etc/secrets/dataprotection.pfx
+      - key: DataProtection__Certificate__Password
+        sync: false
+      - key: Bootstrap__Token
+        sync: false              # set only while creating the first University Leader, then delete it
+
+  - type: web
+    name: university-leaders-web
+    runtime: node
+    region: frankfurt
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- -H 0.0.0.0 -p $PORT
+    autoDeploy: false
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false              # https://<API domain>; inlined at build time, so redeploy after changing it
