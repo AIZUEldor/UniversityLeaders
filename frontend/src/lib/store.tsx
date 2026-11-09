@@ -15,9 +15,10 @@ interface Store {
   people: Person[];
   reports: Report[];
   announcements: Announcement[];
-  currentId: string;
-  current: Person;
-  setCurrentId: (id: string) => void;
+  // DEMO session only — set from the DEV selector on /login; not authentication.
+  currentId: string | null;
+  current: Person | null;
+  setCurrentId: (id: string | null) => void;
   renamePerson: (id: string, name: string) => void;
   submitReport: (r: Omit<Report, "id" | "status" | "comment" | "createdAt">) => void;
   reviewReport: (id: string, status: ReportStatus, comment: string) => void;
@@ -33,9 +34,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [people, setPeople] = useState<Person[]>(seedPeople);
   const [reports, setReports] = useState<Report[]>(seedReports);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [currentId, setCurrentId] = useState<string>("fc-1-0");
+  const [currentId, setCurrentId] = useState<string | null>(null);
 
-  const current: Person = people.find((p: Person) => p.id === currentId) ?? people[0];
+  const current: Person | null = people.find((p: Person) => p.id === currentId) ?? null;
 
   const store: Store = {
     people,
@@ -61,4 +62,11 @@ export function useStore(): Store {
   const s: Store | null = useContext(StoreContext);
   if (!s) throw new Error("useStore must be used inside StoreProvider");
   return s;
+}
+
+/** For pages inside a guarded private layout, which renders children only with a demo user. */
+export function useCurrent(): Store & { current: Person } {
+  const s: Store = useStore();
+  if (!s.current) throw new Error("useCurrent must be used inside a guarded private layout");
+  return s as Store & { current: Person };
 }

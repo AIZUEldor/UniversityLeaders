@@ -13,10 +13,16 @@ export const ROLE_LABELS: Record<Role, string> = {
   faculty_coordinator: "Fakultet koordinatori",
 };
 
-// shortcut: placeholder directions — replace with the 7 exact directions from docs/ARCHITECTURE_CHECKPOINT.md once it is added.
-export const DIRECTIONS: string[] = [1, 2, 3, 4, 5, 6, 7].map(
-  (n: number) => `${n}-yo'nalish (demo)`,
-);
+// The 7 coordinator directions; shared by every faculty and the university coordinator group.
+export const DIRECTIONS: string[] = [
+  "“Yoshlar daftari” va metsenatlik dasturlari",
+  "Harbiy-vatanparvarlik loyihalari",
+  "Talaba-qizlar",
+  "“Besh tashabbus” loyihalari",
+  "Intellektual loyihalar",
+  "Tadbirkorlik va innovatsion loyihalar",
+  "“Social Media”",
+];
 
 export interface Person {
   id: string;

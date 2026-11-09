@@ -3,20 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ROLE_LABELS, type Person } from "@/lib/data";
-import { useStore } from "@/lib/store";
 
 const LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Bosh sahifa" },
   { href: "/reyting", label: "Reyting" },
-  { href: "/panel", label: "Panel" },
-  { href: "/hisobotlar", label: "Hisobotlar" },
-  { href: "/admin", label: "Admin" },
+  { href: "/completed-work", label: "Bajarilgan ishlar" },
 ];
 
-export function Nav() {
+export function PublicNav() {
   const pathname: string = usePathname();
-  const { people, currentId, setCurrentId } = useStore();
   const [open, setOpen] = useState<boolean>(false);
 
   return (
@@ -36,7 +31,7 @@ export function Nav() {
         >
           ☰
         </button>
-        <nav className={`${open ? "flex" : "hidden"} w-full flex-col gap-1 md:flex md:w-auto md:flex-row`}>
+        <nav className={`${open ? "flex" : "hidden"} w-full flex-col gap-1 md:ml-auto md:flex md:w-auto md:flex-row md:items-center`}>
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -49,27 +44,10 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
+          <Link href="/login" className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 md:ml-2">
+            Kirish
+          </Link>
         </nav>
-        <label className="flex w-full items-center gap-2 text-sm md:ml-auto md:w-auto">
-          <span className="whitespace-nowrap text-slate-500">Demo foydalanuvchi:</span>
-          <select
-            value={currentId}
-            onChange={(e) => setCurrentId(e.target.value)}
-            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 md:w-64"
-          >
-            {(Object.keys(ROLE_LABELS) as (keyof typeof ROLE_LABELS)[]).map((role) => (
-              <optgroup key={role} label={ROLE_LABELS[role]}>
-                {people
-                  .filter((p: Person) => p.role === role)
-                  .map((p: Person) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
       </div>
     </header>
   );
