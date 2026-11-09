@@ -1,0 +1,65 @@
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.pfx
+*.key
+appsettings.*.local.json
+secrets.json
+
+# --- .NET ---
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+TestResults/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.nupkg
+*.snupkg
+packages/
+publish/
+artifacts/
+coverage*.json
+coverage*.xml
+*.coverage
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# --- Local storage / data ---
+storage/
+uploads/
+minio-data/
+pgdata/
+postgres-data/
+*.db
+*.sqlite
+
+# --- IDE / OS ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db
