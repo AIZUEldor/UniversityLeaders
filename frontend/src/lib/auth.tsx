@@ -217,6 +217,8 @@ export function describeError(error: unknown): string {
     case "attachment_not_found":
     case "attachment_unavailable":
       return "Fayl topilmadi yoki hozir mavjud emas.";
+    case "storage_quota_reached":
+      return "Fayllar uchun ajratilgan joy to'ldi. Yangi fayl yuklab bo'lmaydi.";
     case "no_recipients":
       return "Faol fakultet rahbari yo'q — e'lonni qabul qiladigan hech kim yo'q.";
     case "announcement_not_found":

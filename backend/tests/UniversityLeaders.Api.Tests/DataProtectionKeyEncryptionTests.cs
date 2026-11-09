@@ -97,8 +97,6 @@ public sealed class DataProtectionKeyEncryptionTests : IAsyncLifetime
         Assert.DoesNotContain(_pfxPassword, plaintext);
 
         await ClearKeyRingAsync();
-        Assert.Contains("https in Production", StartupError(Host(_certificateA, _pfxPassword, production: true)
-            .WithWebHostBuilder((IWebHostBuilder builder) => builder.UseSetting("ObjectStorage:ServiceUrl", "http://localhost:9010"))));
         await using WebApplicationFactory<Program> production = Host(_certificateA, _pfxPassword, production: true);
         Assert.Equal(HttpStatusCode.OK, (await production.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") }).GetAsync("/health")).StatusCode);
     }
@@ -112,8 +110,6 @@ public sealed class DataProtectionKeyEncryptionTests : IAsyncLifetime
             if (production)
             {
                 builder.UseEnvironment("Production");
-                // Production requires https object storage; startup never contacts it, so the test MinIO (http) is replaced.
-                builder.UseSetting("ObjectStorage:ServiceUrl", "https://storage.invalid");
             }
 
             if (certificatePath is not null)

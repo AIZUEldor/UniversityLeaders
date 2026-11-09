@@ -1,7 +1,4 @@
 using System.Net.Http.Json;
-using Amazon.Runtime;
-using Amazon.S3;
-using Amazon.S3.Model;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -10,25 +7,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using UniversityLeaders.Infrastructure.Persistence;
+using UniversityLeaders.Infrastructure.Storage;
 
 namespace UniversityLeaders.Api.Tests;
 
 /// <summary>
-/// Runs the real API against a throwaway database on the existing local PostgreSQL server and, when a test needs files,
-/// a throwaway bucket on the local MinIO. Only the uniquely named database/bucket created here are ever removed;
-/// the dev database and the dev bucket are never touched.
+/// Runs the real API against a throwaway database on the existing local PostgreSQL server (attachment bytes included).
+/// Only the uniquely named database created here is ever removed; the dev database is never touched.
 /// </summary>
 public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string TestDatabasePrefix = "ul_authtest_";
-    public const string TestBucketPrefix = "ul-test-";
 
     private readonly string _serverConnectionString;
     private readonly string _databaseName = TestDatabasePrefix + Guid.NewGuid().ToString("N");
-    private readonly string _storageUrl;
-    private readonly string _storageAccessKey;
-    private readonly string _storageSecretKey;
-    private bool _bucketCreated;
 
     public AuthApiFactory()
     {
@@ -41,16 +33,7 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
 
         _serverConnectionString = baseConnection;
         BootstrapToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-
-        // Test buckets are created and removed with the MinIO admin account; the API under test uses the same account.
-        _storageUrl = RequireEnvironment("ObjectStorage__ServiceUrl");
-        _storageAccessKey = RequireEnvironment("MINIO_ROOT_USER");
-        _storageSecretKey = RequireEnvironment("MINIO_ROOT_PASSWORD");
-        Bucket = TestBucketPrefix + Guid.NewGuid().ToString("N");
     }
-
-    /// <summary>Isolated bucket for this test (created on demand by <see cref="EnsureBucketAsync"/>).</summary>
-    public string Bucket { get; }
 
     public string BootstrapToken { get; }
 
@@ -62,50 +45,18 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         builder.UseSetting("Database:ConnectionString", ConnectionString);
         builder.UseSetting("Bootstrap:Token", BootstrapToken);
         builder.UseSetting("RateLimiting:Login:PermitLimit", "1000"); // rate limiting itself is not under test here
-        builder.UseSetting("ObjectStorage:ServiceUrl", _storageUrl);
-        builder.UseSetting("ObjectStorage:Bucket", Bucket);
-        builder.UseSetting("ObjectStorage:AccessKey", _storageAccessKey);
-        builder.UseSetting("ObjectStorage:SecretKey", _storageSecretKey);
     }
 
-    public AmazonS3Client CreateStorageAdminClient()
+    /// <summary>Storage keys of every stored attachment body (attachment_contents).</summary>
+    public Task<List<string>> ListStoredKeysAsync()
     {
-        return new AmazonS3Client(new BasicAWSCredentials(_storageAccessKey, _storageSecretKey), new AmazonS3Config
-        {
-            ServiceURL = _storageUrl,
-            ForcePathStyle = true,
-            AuthenticationRegion = "us-east-1",
-            RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-            ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
-        });
+        return WithDbAsync((AppDbContext db) => db.Set<AttachmentContent>().Select((AttachmentContent c) => c.StorageKey).ToListAsync());
     }
 
-    public async Task EnsureBucketAsync()
+    public Task<byte[]> ReadStoredObjectAsync(string key)
     {
-        if (_bucketCreated)
-        {
-            return;
-        }
-
-        using AmazonS3Client s3 = CreateStorageAdminClient();
-        await s3.PutBucketAsync(Bucket);
-        _bucketCreated = true;
-    }
-
-    public async Task<IReadOnlyList<string>> ListStoredKeysAsync()
-    {
-        using AmazonS3Client s3 = CreateStorageAdminClient();
-        ListObjectsV2Response response = await s3.ListObjectsV2Async(new ListObjectsV2Request { BucketName = Bucket });
-        return (response.S3Objects ?? new List<S3Object>()).Select((S3Object o) => o.Key).ToList();
-    }
-
-    public async Task<byte[]> ReadStoredObjectAsync(string key)
-    {
-        using AmazonS3Client s3 = CreateStorageAdminClient();
-        using GetObjectResponse response = await s3.GetObjectAsync(Bucket, key);
-        using MemoryStream buffer = new MemoryStream();
-        await response.ResponseStream.CopyToAsync(buffer);
-        return buffer.ToArray();
+        return WithDbAsync((AppDbContext db) => db.Set<AttachmentContent>()
+            .Where((AttachmentContent c) => c.StorageKey == key).Select((AttachmentContent c) => c.Content).SingleAsync());
     }
 
     public HttpClient CreateApiClient()
@@ -146,36 +97,6 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     {
         await base.DisposeAsync();
         await DropDatabaseAsync();
-        await DeleteBucketAsync();
-    }
-
-    private async Task DeleteBucketAsync()
-    {
-        if (!_bucketCreated)
-        {
-            return;
-        }
-
-        if (!Bucket.StartsWith(TestBucketPrefix, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("Refusing to delete a bucket that was not created by the tests.");
-        }
-
-        using AmazonS3Client s3 = CreateStorageAdminClient();
-        foreach (string key in await ListStoredKeysAsync())
-        {
-            await s3.DeleteObjectAsync(Bucket, key);
-        }
-
-        await s3.DeleteBucketAsync(Bucket);
-    }
-
-    private static string RequireEnvironment(string name)
-    {
-        string? value = Environment.GetEnvironmentVariable(name);
-        return string.IsNullOrWhiteSpace(value)
-            ? throw new InvalidOperationException($"Set {name} (see backend/README.md, Integration tests).")
-            : value;
     }
 
     private async Task DropDatabaseAsync()

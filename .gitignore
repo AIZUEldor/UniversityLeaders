@@ -56,12 +56,12 @@ yarn-error.log*
 pnpm-debug.log*
 .pnpm-store/
 
-# --- Local storage / data ---
-storage/
-uploads/
-minio-data/
-pgdata/
-postgres-data/
+# --- Local storage / data (repo root only: unanchored names also matched source folders such as Infrastructure/Storage/) ---
+/storage/
+/uploads/
+/minio-data/
+/pgdata/
+/postgres-data/
 *.db
 *.sqlite
 
@@ -72,3 +72,4 @@ postgres-data/
 *.swp
 .DS_Store
 Thumbs.db
+.neon

@@ -19,6 +19,12 @@ public static class AttachmentRules
 {
     public const long MaxSizeBytes = 10 * 1024 * 1024;
     public const int MaxFilesPerReport = 10;
+
+    /// <summary>
+    /// All attachment bytes together. Files live in PostgreSQL and Neon's free plan has 1 GB per project, so about half
+    /// stays reserved for reports, audit history and indexes. Raise only together with the database plan.
+    /// </summary>
+    public const long MaxTotalBytes = 500L * 1024 * 1024;
     public const int MaxFileNameLength = 255;
 
     /// <summary>Random, server-generated key. The client file name is never part of a storage path.</summary>

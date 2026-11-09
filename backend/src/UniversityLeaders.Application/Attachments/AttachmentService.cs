@@ -69,6 +69,11 @@ internal sealed class AttachmentService : IAttachmentService
 
         (string fileName, AttachmentKind kind, byte[] bytes) = await ValidateAsync(upload, cancellationToken);
         string contentType = AttachmentInspector.ContentType(kind); // detected type, never the client's claim
+        if (await _reports.TotalAttachmentBytesAsync(cancellationToken) + bytes.LongLength > AttachmentRules.MaxTotalBytes)
+        {
+            // shortcut: check-then-insert, concurrent uploads may overshoot by a few files; fine against a 1 GB database.
+            throw new ConflictException("storage_quota_reached", "File storage is full; no more files can be uploaded.");
+        }
 
         Guid attachmentId = Guid.CreateVersion7();
         string storageKey = AttachmentRules.NewStorageKey(report.Id, attachmentId);

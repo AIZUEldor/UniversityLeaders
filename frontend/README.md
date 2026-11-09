@@ -9,7 +9,7 @@ login (`/login`) and two private areas: `/admin` (University Leader) and `/dashb
 |---|---|
 | Authentication | **Real** — ASP.NET Core API cookie session (`/api/auth/*`) |
 | Admin faculties, faculty leaders, university coordinators; faculty leader's coordinator management | **Real** management APIs with creation, editing, password reset (temporary password shown once) and account deactivation |
-| Private reports, review queues, approvals, attachments and overview counts | **Real** PostgreSQL and MinIO APIs; role and ownership checks are server-side |
+| Private reports, review queues, approvals, attachments and overview counts | **Real** PostgreSQL APIs (files stored in PostgreSQL); role and ownership checks are server-side |
 | Announcements, notifications, admin ranking | **Real** APIs; nav shows unread counts; live hints from the SignalR hub (see below) |
 | Public home, faculty profiles, completed work and ranking | **Real** read-only APIs; only approved work and active public directory names appear |
 

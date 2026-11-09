@@ -26,7 +26,6 @@ public sealed class AttachmentTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _factory.InitializeAsync();
-        await _factory.EnsureBucketAsync();
     }
 
     public Task DisposeAsync() => ((IAsyncLifetime)_factory).DisposeAsync();
@@ -105,6 +104,22 @@ public sealed class AttachmentTests : IAsyncLifetime
         HttpResponseMessage eleventh = await UploadAsync(c.CoordinatorA1, reportId, "p11.png", Files.Png(), "image/png");
         Assert.Equal("attachment_limit_reached", await ManagementSteps.AssertStatusAsync(eleventh, HttpStatusCode.Conflict));
         Assert.Equal(AttachmentRules.MaxFilesPerReport, (await _factory.ListStoredKeysAsync()).Count);
+    }
+
+    [Fact]
+    public async Task Uploads_stop_at_the_total_storage_quota_without_storing_anything()
+    {
+        Cast c = await Cast.ArrangeAsync(_factory);
+        string reportId = await CreateDraftAsync(c.CoordinatorA1);
+        await UploadOkAsync(c.CoordinatorA1, reportId, "first.pdf", Files.Pdf());
+        // Pretend the stored files already fill the quota (only the recorded size counts, so no large upload is needed).
+        await _factory.WithDbAsync((Infrastructure.Persistence.AppDbContext db) => db.ReportAttachments
+            .ExecuteUpdateAsync(set =>
+                set.SetProperty((ReportAttachment a) => a.SizeBytes, AttachmentRules.MaxTotalBytes)));
+
+        HttpResponseMessage full = await UploadAsync(c.CoordinatorA1, reportId, "second.png", Files.Png(), "image/png");
+        Assert.Equal("storage_quota_reached", await ManagementSteps.AssertStatusAsync(full, HttpStatusCode.Conflict));
+        Assert.Single(await _factory.ListStoredKeysAsync());
     }
 
     [Fact]

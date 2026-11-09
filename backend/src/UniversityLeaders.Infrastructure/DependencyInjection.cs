@@ -1,6 +1,4 @@
-using Amazon.Runtime;
 using System.Security.Cryptography.X509Certificates;
-using Amazon.S3;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,8 +24,7 @@ public static class DependencyInjection
 
     /// <summary>Registers persistence and other infrastructure (repositories, storage) behind Application interfaces.</summary>
     /// <param name="production">
-    /// True in Production: a valid key-encryption certificate is mandatory, plaintext keys block startup and object storage
-    /// must be reached over https.
+    /// True in Production: a valid key-encryption certificate is mandatory and plaintext keys block startup.
     /// </param>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, bool production)
     {
@@ -56,29 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
 
-        services
-            .AddOptions<ObjectStorageOptions>()
-            .Bind(configuration.GetSection(ObjectStorageOptions.SectionName))
-            .Validate(
-                (ObjectStorageOptions o) => Uri.TryCreate(o.ServiceUrl, UriKind.Absolute, out Uri? url)
-                    && (!production || url.Scheme == Uri.UriSchemeHttps)
-                    && o.Bucket.Length > 0 && o.AccessKey.Length > 0 && o.SecretKey.Length > 0 && o.Region.Length > 0,
-                "ObjectStorage:ServiceUrl (https in Production), Bucket, AccessKey, SecretKey and Region are required.")
-            .ValidateOnStart();
-        services.AddSingleton<IAmazonS3>((IServiceProvider serviceProvider) =>
-        {
-            ObjectStorageOptions storage = serviceProvider.GetRequiredService<IOptions<ObjectStorageOptions>>().Value;
-            AmazonS3Config config = new AmazonS3Config
-            {
-                ServiceURL = storage.ServiceUrl,
-                ForcePathStyle = true, // MinIO uses path-style bucket addressing
-                AuthenticationRegion = storage.Region,
-                RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
-                ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
-            };
-            return new AmazonS3Client(new BasicAWSCredentials(storage.AccessKey, storage.SecretKey), config);
-        });
-        services.AddSingleton<IAttachmentStorage, S3AttachmentStorage>();
+        services.AddScoped<IAttachmentStorage, PostgresAttachmentStorage>(); // file bytes in PostgreSQL (attachment_contents)
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 
         return services;

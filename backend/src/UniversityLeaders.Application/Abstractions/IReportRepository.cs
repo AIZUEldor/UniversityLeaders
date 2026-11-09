@@ -30,6 +30,9 @@ public interface IReportRepository
 
     Task<int> CountAttachmentsAsync(Guid reportId, CancellationToken cancellationToken);
 
+    /// <summary>Size of every stored attachment, all reports together.</summary>
+    Task<long> TotalAttachmentBytesAsync(CancellationToken cancellationToken);
+
     /// <summary>Tracked attachment of the given report, or null.</summary>
     Task<ReportAttachment?> FindAttachmentAsync(Guid reportId, Guid attachmentId, CancellationToken cancellationToken);
 

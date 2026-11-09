@@ -1,4 +1,4 @@
-# Production readiness (Phase 7A audit, updated in Phases 7B-7E, 2026-11-10)
+# Production readiness (Phase 7A audit, updated in Phases 7B-7F, 2026-11-10)
 
 Status of the integrated system before the first deployment. Nothing here is deployed. Items marked **open** are
 confirmed gaps; they are documented, not implemented.
@@ -15,7 +15,7 @@ confirmed gaps; they are documented, not implemented.
 - Public endpoints expose display names, approved work and scores only (integration tests assert no user names, ids,
   hashes, review comments, breakdowns or attachments).
 - Uploads: 10 MB / 10 files, content sniffing (JPEG, PNG, PDF, real DOCX), zip-bomb limits, random storage keys,
-  private bucket, streamed only through the authorized API with `Content-Disposition: attachment` and `nosniff`.
+  stored in PostgreSQL (`attachment_contents`, 500 MB total quota), streamed only through the authorized API with `Content-Disposition: attachment` and `nosniff`.
 - Errors: central handler; 500s return a generic message, details only in logs.
 - Secrets: `.env*` git-ignored, `.env.example` has placeholders only; no credentials in tracked or untracked source.
 - Dependencies: `dotnet list package --vulnerable --include-transitive` clean; `npm audit --omit=dev` 0 findings.
@@ -43,15 +43,15 @@ confirmed gaps; they are documented, not implemented.
 | I2 | Authentication events are not audited (login success/failure, logout, password change). Management, report and announcement actions are. | `Application/Auth/AuthService.cs`, `Application/Common/Audit.cs` | Add `auth.login_succeeded`, `auth.login_failed` (user name, IP, no password), `auth.logout`, `auth.password_changed`. |
 | I3 | No malware scanning of uploads. PDF/DOCX are content-validated but may still carry malicious payloads that reviewers download. | `Application/Attachments/AttachmentService.cs` | Scan before `PutAsync` (ClamAV sidecar or provider scanning) and reject or quarantine; until then, tell reviewers to open files with up-to-date viewers. |
 | I4 | Forwarded headers trust any proxy (`KnownIPNetworks`/`KnownProxies` cleared). Acceptable on Render, where the proxy is the only entry point; `render.yaml` sets `ForwardedHeaders__Enabled=true`. | `backend/src/UniversityLeaders.Api/Program.cs`, `render.yaml` | Keep the API reachable only through Render (no other ingress); list proxy networks if that ever changes. |
-| I5 | **Fixed (Phase 7E).** Production refuses a non-https `ObjectStorage:ServiceUrl`; signing region configurable (`ObjectStorage:Region`) for AWS S3. **Open:** choose the provider and create the private bucket and a bucket-scoped key. | `Infrastructure/DependencyInjection.cs`, `Storage/S3AttachmentStorage.cs` | docs/DEPLOYMENT.md §2. |
-| I6 | **Documented (Phase 7E).** Backup and restore for PostgreSQL, the bucket and the certificate in docs/DEPLOYMENT.md §4. **Open:** paid database plan with backups, a second bucket for the daily copy, one test restore before go-live. | Hosting | docs/DEPLOYMENT.md §4. |
+| I5 | **Obsolete (Phase 7F).** No object storage: attachment bytes are stored in PostgreSQL. | — | — |
+| I6 | **Documented (Phase 7E).** Backup and restore for PostgreSQL (including files) and the certificate in docs/DEPLOYMENT.md §4. **Open:** paid database plan with backups, a second bucket for the daily copy, one test restore before go-live. | Hosting | docs/DEPLOYMENT.md §4. |
 | I7 | `docs/ARCHITECTURE_CHECKPOINT.md` is referenced by `CLAUDE.md` but does not exist. | `docs/` | Add the agreed checkpoint (owner decision; not generated). |
 
 ## Optional
 
 | # | Issue | Affected | Fix |
 |---|---|---|---|
-| O1 | Orphaned storage objects (failed rollback delete) are only logged. | `Application/Attachments/AttachmentService.cs` | Periodic sweep: delete bucket keys without a `report_attachments` row older than 1 h. |
+| O1 | Orphaned attachment bytes (failed rollback delete) are only logged. | `Application/Attachments/AttachmentService.cs` | Periodic job deleting `attachment_contents` rows without a `report_attachments.storage_key`. |
 | O2 | Attachment limit is check-then-insert; two concurrent uploads at 9 files can end at 11. | `AttachmentService.UploadAsync` | Lock the report row (`SELECT … FOR UPDATE`) or count under the report's `xmin` version. |
 | O3 | Dev-only npm advisory: `minimatch` ReDoS (GHSA-g3hv-75wg-m249) via `eslint-config-next`. Not shipped. | `frontend/package.json` | Update `eslint-config-next` when a fixed release exists. |
 | O4 | **Fixed (Phase 7E).** Microsoft packages on 10.0.14 (EF Core Design, Identity.Core, Logging.Abstractions, Mvc.Testing); `dotnet list package --vulnerable` clean. Local `dotnet-ef` tool is 10.0.7 (the image uses 10.0.14). | `backend/**/*.csproj` | `dotnet tool update --global dotnet-ef --version 10.0.14`. |

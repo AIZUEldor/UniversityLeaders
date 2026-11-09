@@ -97,6 +97,11 @@ internal sealed class ReportRepository : IReportRepository
         return _db.ReportAttachments.CountAsync((ReportAttachment a) => a.ReportId == reportId, cancellationToken);
     }
 
+    public Task<long> TotalAttachmentBytesAsync(CancellationToken cancellationToken)
+    {
+        return _db.ReportAttachments.SumAsync((ReportAttachment a) => a.SizeBytes, cancellationToken);
+    }
+
     public Task<ReportAttachment?> FindAttachmentAsync(Guid reportId, Guid attachmentId, CancellationToken cancellationToken)
     {
         return _db.ReportAttachments.FirstOrDefaultAsync((ReportAttachment a) => a.Id == attachmentId && a.ReportId == reportId, cancellationToken);

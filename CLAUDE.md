@@ -5,7 +5,7 @@
 - Frontend: Next.js with TypeScript
 - Backend: ASP.NET Core on .NET 10, Clean Architecture
 - Database: PostgreSQL
-- File storage: MinIO
+- File storage: PostgreSQL (`attachment_contents`, bytea; no object store)
 - Real-time notifications: SignalR
 
 ## Architecture rules

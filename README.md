@@ -7,7 +7,7 @@ Platform for managing university and faculty leadership work: role-based report 
 - **Frontend:** Next.js (TypeScript)
 - **Backend:** ASP.NET Core (.NET 10), Clean Architecture
 - **Database:** PostgreSQL
-- **File storage:** MinIO (S3-compatible)
+- **File storage:** PostgreSQL (attachment bytes in `attachment_contents`)
 - **Real-time:** SignalR
 
 ## Status

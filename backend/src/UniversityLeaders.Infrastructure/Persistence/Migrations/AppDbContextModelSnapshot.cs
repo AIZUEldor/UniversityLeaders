@@ -629,6 +629,24 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("UniversityLeaders.Infrastructure.Storage.AttachmentContent", b =>
+                {
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.HasKey("StorageKey")
+                        .HasName("pk_attachment_contents");
+
+                    b.ToTable("attachment_contents", (string)null);
+                });
+
             modelBuilder.Entity("UniversityLeaders.Domain.Entities.Announcement", b =>
                 {
                     b.HasOne("UniversityLeaders.Domain.Entities.User", "Author")

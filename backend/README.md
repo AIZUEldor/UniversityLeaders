@@ -9,7 +9,7 @@ ASP.NET Core (.NET 10) API, Clean Architecture.
 - **Phase 3B:** University Leader management of faculties, faculty leaders and university coordinators, with audit logging.
 - **Phase 3C:** faculty leaders manage the faculty coordinators of their own faculty.
 - **Phase 4A:** report workflow (draft → submitted → approved/rejected → resubmitted), review queue, public completed work and faculty ranking.
-- **Phase 4B:** report attachments in MinIO (private bucket), content-validated uploads, authorized streaming downloads.
+- **Phase 4B:** report attachments, content-validated uploads, authorized streaming downloads (files in PostgreSQL since Phase 7F).
 - **Phase 5:** announcements (University Leader → faculty leaders) with read tracking, persistent report notifications, SignalR live hints.
 - **Phase 7B:** Data Protection key ring persisted in PostgreSQL (sessions and CSRF tokens survive restarts and deployments).
 - **Phase 7C:** key ring encrypted with an X.509 certificate; mandatory in Production.
@@ -38,7 +38,7 @@ Controllers do not use try-catch.
 ## Prerequisites
 
 - .NET SDK **10.0.202** (pinned in the repo-root `global.json`)
-- Docker Desktop (runs PostgreSQL 17 and MinIO from `infra/docker-compose.yml`)
+- Docker Desktop (runs PostgreSQL 17 from `infra/docker-compose.yml`; its MinIO service is no longer used by the API)
 - `dotnet-ef` 10.x for migrations (see [Migrations](#migrations))
 
 ## Local services (PostgreSQL + MinIO)
@@ -63,12 +63,12 @@ ASP.NET does not read `.env` itself. Load the backend settings into the shell be
 
 ```bash
 # bash (from repo root)
-set -a; eval "$(grep -E '^(Database__|ObjectStorage__|MINIO_ROOT_)[A-Za-z_]*=' .env | sed -E 's/^([^=]+)=(.*)$/\1="\2"/')"; set +a
+set -a; eval "$(grep -E '^(Database__)[A-Za-z_]*=' .env | sed -E 's/^([^=]+)=(.*)$/\1="\2"/')"; set +a
 ```
 
 ```powershell
 # PowerShell (from repo root)
-Get-Content .env | Where-Object { $_ -match '^(Database__|ObjectStorage__|MINIO_ROOT_)\w*=' } | ForEach-Object { $k, $v = $_ -split '=', 2; Set-Item "env:$k" $v }
+Get-Content .env | Where-Object { $_ -match '^(Database__)\w*=' } | ForEach-Object { $k, $v = $_ -split '=', 2; Set-Item "env:$k" $v }
 ```
 
 ## Configuration
@@ -78,9 +78,6 @@ Strongly typed options, validated at startup (the app refuses to start if a requ
 | Setting | Env var | Notes |
 |---|---|---|
 | `Database:ConnectionString` | `Database__ConnectionString` | Required. `appsettings.Development.json` points at the local container (port 5433) **without** a password; supply the full string via the env var. |
-| `ObjectStorage:ServiceUrl`, `:Bucket` | `ObjectStorage__ServiceUrl`, `__Bucket` | Required. Development defaults: `http://localhost:9010`, `report-attachments`. |
-| `ObjectStorage:AccessKey`, `:SecretKey` | `ObjectStorage__AccessKey`, `__SecretKey` | Required. The least-privilege MinIO account (`MINIO_APP_*`), never the root account. |
-| `ObjectStorage:Region` | `ObjectStorage__Region` | SigV4 signing region, default `us-east-1` (MinIO, Cloudflare R2); the bucket region for AWS S3. Production requires an https `ServiceUrl`. |
 | `DataProtection:Certificate:*` | `DataProtection__Certificate__Path`, `__Password` | Required in Production (see "Data Protection keys"). |
 
 Never put real credentials in `appsettings*.json`; use the environment variable (from `.env`) or user secrets.
@@ -336,8 +333,8 @@ is created (snapshot), so history stays with the faculty it was written for.
 
 ## Attachments (Phase 4B)
 
-File bytes live in MinIO (private bucket); metadata (`report_attachments`: file name, detected type, size, uploader, time,
-storage key) lives in PostgreSQL. All routes need a signed-in user; POST/DELETE need `X-CSRF-TOKEN`.
+File bytes live in PostgreSQL (`attachment_contents`: `storage_key`, `content bytea`, Phase 7F); metadata (`report_attachments`:
+file name, detected type, size, uploader, time, storage key) sits beside it. All routes need a signed-in user; POST/DELETE need `X-CSRF-TOKEN`.
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
@@ -350,7 +347,9 @@ storage key) lives in PostgreSQL. All routes need a signed-in user; POST/DELETE 
   for coordinator reports, drafts of others — gets **404 `report_not_found`**, identical to a non-existent report. A reviewer who
   tries to add or remove files gets 403 (they already know the report exists). Submitted and Approved reports are frozen:
   409 `report_locked`.
-- **Limits:** JPEG, PNG, PDF and DOCX only; at most **10 MB** per file and **10** per report (409 `attachment_limit_reached`).
+- **Limits:** JPEG, PNG, PDF and DOCX only; at most **10 MB** per file and **10** per report (409 `attachment_limit_reached`), and
+  **500 MB** for all attachments together (409 `storage_quota_reached`; `AttachmentRules.MaxTotalBytes`, sized for Neon's free
+  1 GB per project; raise it together with the database plan).
   Larger request bodies are refused before reading (413 `payload_too_large`); the service also reads at most 10 MB + 1 byte.
 - **Content validation (`AttachmentInspector`):** the type is decided by the bytes (JPEG `FF D8 FF`, PNG signature, `%PDF-`,
   ZIP + `[Content_Types].xml` + `word/document.xml` for DOCX). The extension must match the detected type and a declared MIME type,
@@ -364,13 +363,12 @@ storage key) lives in PostgreSQL. All routes need a signed-in user; POST/DELETE 
   (RFC 5987 `filename*`), the detected `Content-Type`, `X-Content-Type-Options: nosniff` (on every API response),
   `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control: private, no-store` and `Cross-Origin-Resource-Policy: same-origin`.
 - **Consistency (no distributed transaction):**
-  - *Upload:* validate → put object → commit metadata + report touch (xmin-guarded) + audit in one DB transaction. If the commit
+  - *Upload:* validate → insert the bytes (own statement) → commit metadata + report touch (xmin-guarded) + audit in one DB transaction. If the commit
     fails (e.g. the report was submitted meanwhile → 409 `concurrent_update`), the object is deleted again.
-  - *Delete:* commit the metadata removal first, then delete the object.
-  - Storage unreachable → 503 `storage_unavailable` (`Retry-After: 30`) and nothing is recorded.
+  - *Delete:* commit the metadata removal first, then delete the bytes.
   - **Recovery limitation:** if the process dies between storing an object and committing, or the compensating/cleanup delete
     fails, an object without metadata remains (logged as "Orphaned attachment object …" with its key). It is unreachable through
-    the API but uses storage; a periodic sweep comparing bucket keys with `report_attachments.storage_key` is not implemented yet.
+    the API but uses space; a periodic sweep removing `attachment_contents` rows without a `report_attachments.storage_key` is not implemented yet.
     Metadata without an object can only arise from out-of-band deletion; downloads then return 404 `attachment_unavailable` and log an error.
 - **Audit:** `attachment.added` (id, file name, detected type, size) and `attachment.removed`, against the report.
 
@@ -434,13 +432,12 @@ is vacant when a report is submitted, no notification is created (the report sti
 
 ### Integration tests
 
-`tests/UniversityLeaders.Api.Tests` runs the real API (`WebApplicationFactory`) against the local PostgreSQL and MinIO. Each test
-creates its own database `ul_authtest_<guid>` (migrated, dropped afterwards); attachment tests also create their own bucket
-`ul-test-<guid>` (emptied and deleted afterwards). The dev database and the dev bucket are never touched.
+`tests/UniversityLeaders.Api.Tests` runs the real API (`WebApplicationFactory`) against the local PostgreSQL. Each test
+creates its own database `ul_authtest_<guid>` (migrated, dropped afterwards), attachment bytes included. The dev database is
+never touched.
 
 Required environment (load from `.env` as shown in [Local services](#local-services-postgresql--minio)):
-`Database__ConnectionString`, `ObjectStorage__ServiceUrl`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` (the root account is used
-only to create and delete the throwaway buckets, and by the API under test for those buckets).
+`Database__ConnectionString`.
 
 ```bash
 dotnet test UniversityLeaders.slnx    # from backend/
@@ -461,7 +458,8 @@ and index filters uses the snake_case column names.
 | `faculties` | The 13 faculties (not seeded — real names pending) |
 | `directions` | The 7 official directions, seeded with fixed ids 1–7 |
 | `reports` | Draft → Submitted → Approved / Rejected (Rejected can be edited and resubmitted), optional score 0–10; faculty/direction copied from the author |
-| `report_attachments` | File metadata; the file itself goes to MinIO under a unique `storage_key` |
+| `report_attachments` | File metadata, with a unique `storage_key` |
+| `attachment_contents` | File bytes (`bytea`) by `storage_key` |
 | `report_reviews` | Append-only approve/reject history with comments |
 | `announcements`, `announcement_recipients` | Announcement plus per-recipient delivery and read tracking |
 | `notifications` | Per-user notifications with read tracking |
@@ -531,12 +529,14 @@ Still open (messaging):
 
 Still open (attachments):
 
-- **Orphan sweep:** no background job yet reconciles bucket keys with `report_attachments` (see Consistency above).
+- **Orphan sweep:** no background job yet removes `attachment_contents` rows without metadata (see Consistency above).
 - **Detection limits:** PDF checks are textual, so scripts hidden in compressed object streams or with hex-escaped names
   (`/J#61vaScript`) are not detected; images are only signature-checked (no re-encoding/EXIF stripping). There is no malware
   scanning. Mitigated by download-only serving with nosniff/sandbox, but a real scanner (e.g. ClamAV) should be added before production.
-- **Upload rate limiting** and per-user storage quotas are not implemented.
-- **Production storage:** use TLS for the S3 endpoint, server-side encryption and bucket versioning/backups on the provider side.
+- **Upload rate limiting** and per-user quotas are not implemented (only the global 500 MB quota).
+- **Old local MinIO files:** none existed when storage moved to PostgreSQL (0 attachment rows locally and in Neon), so nothing
+  was migrated. A database that still has `report_attachments` rows from the MinIO era needs their objects copied into
+  `attachment_contents` (same `storage_key`) before those downloads work again.
 
 Still open (reports):
 
