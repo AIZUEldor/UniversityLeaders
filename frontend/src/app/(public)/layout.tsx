@@ -1,11 +1,24 @@
+import Image from "next/image";
 import { Suspense } from "react";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
+      <AnimatedBackground />
       <Suspense fallback={<div className="h-14 border-b border-slate-200 bg-white" />}><PublicNav /></Suspense>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-    </>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <footer className="mt-10 border-t border-slate-200/70 bg-white/70 backdrop-blur">
+        <div className="flag-ribbon" aria-hidden="true" />
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-sm text-slate-500">
+          <div className="flex items-center gap-3">
+            <Image src="/ozmu-logo.png" alt="" width={291} height={128} className="h-8 w-auto mix-blend-multiply" />
+            <span>Mirzo Ulug&apos;bek nomidagi O&apos;zbekiston Milliy universiteti · Yoshlar ittifoqi</span>
+          </div>
+          <span>© Universitet Yetakchilari platformasi</span>
+        </div>
+      </footer>
+    </div>
   );
 }

@@ -40,8 +40,8 @@ export default function AdminFaculties() {
     <ManagementPanel>
       <h2 className="mb-4 font-semibold">{editing ? "Fakultetni tahrirlash" : "Yangi fakultet"}</h2>
       <form onSubmit={(event) => void save(event)} className="flex flex-wrap items-end gap-3">
-        <label className="min-w-64 flex-1 text-sm">Nomi<input required maxLength={200} value={name} onChange={(event) => setName(event.target.value)} className={`${inputClass} mt-1`} /></label>
-        <label className="min-w-64 flex-1 text-sm">Qo&apos;shimcha tavsif (ixtiyoriy)<input maxLength={500} value={description} onChange={(event) => setDescription(event.target.value)} className={`${inputClass} mt-1`} /></label>
+        <label className="min-w-0 flex-1 basis-full text-sm sm:min-w-64">Nomi<input required maxLength={200} value={name} onChange={(event) => setName(event.target.value)} className={`${inputClass} mt-1`} /></label>
+        <label className="min-w-0 flex-1 basis-full text-sm sm:min-w-64">Qo&apos;shimcha tavsif (ixtiyoriy)<input maxLength={500} value={description} onChange={(event) => setDescription(event.target.value)} className={`${inputClass} mt-1`} /></label>
         <button disabled={busy || loading || (!editing && faculties.length >= 13)} className={primaryClass}>{busy ? "Saqlanmoqda..." : editing ? "Saqlash" : "Yaratish"}</button>
         {editing && <button type="button" onClick={() => { setEditing(null); setName(""); setDescription(""); }} className={secondaryClass}>Bekor qilish</button>}
       </form>

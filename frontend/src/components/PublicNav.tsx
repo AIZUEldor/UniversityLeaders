@@ -19,11 +19,11 @@ export function PublicNav() {
   const area: string = state.status === "authenticated" ? homeFor(state.user.role) : "/login";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
         <Link href="/" className="flex min-w-0 items-center gap-2 text-base font-bold text-indigo-700 sm:text-lg">
           {/* Height is fixed per breakpoint and width follows the file's 291x128 ratio, so the logo never stretches. */}
-          <Image src="/ozmu-logo.png" alt="O'zMU Yoshlar ittifoqi logotipi" width={291} height={128} priority className="h-8 w-auto shrink-0 sm:h-10" />
+          <Image src="/ozmu-logo.png" alt="O'zMU Yoshlar ittifoqi logotipi" width={291} height={128} priority className="h-8 w-auto shrink-0 mix-blend-multiply sm:h-10" />
           <span className="truncate">Universitet Yetakchilari</span>
         </Link>
         <button
@@ -52,6 +52,7 @@ export function PublicNav() {
           </Link>
         </nav>
       </div>
+      <div className="flag-ribbon" aria-hidden="true" />
     </header>
   );
 }

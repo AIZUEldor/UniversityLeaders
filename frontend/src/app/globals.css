@@ -1,1 +1,195 @@
 @import "tailwindcss";
+
+/*
+ * Brand palette from the Uzbekistan flag and the O'zMU Yoshlar ittifoqi logo.
+ * The existing UI uses Tailwind's indigo (primary) and violet (gradient end) classes; remapping both scales here
+ * re-themes every page from one place: indigo -> flag azure, violet -> flag green.
+ */
+@theme {
+  --color-indigo-50: #eef9fc;
+  --color-indigo-100: #d4f0f8;
+  --color-indigo-200: #a9e0f0;
+  --color-indigo-300: #6fc9e3;
+  --color-indigo-400: #2eaed2;
+  --color-indigo-500: #0099b5;
+  --color-indigo-600: #007c97;
+  --color-indigo-700: #04647b;
+  --color-indigo-800: #0b5163;
+  --color-indigo-900: #0f4353;
+  --color-indigo-950: #062a35;
+
+  --color-violet-50: #eefbf1;
+  --color-violet-100: #d6f5dd;
+  --color-violet-200: #aeeabd;
+  --color-violet-300: #78d893;
+  --color-violet-400: #43c466;
+  --color-violet-500: #1eb53a;
+  --color-violet-600: #17922f;
+  --color-violet-700: #157328;
+  --color-violet-800: #155b24;
+  --color-violet-900: #134b20;
+  --color-violet-950: #06290f;
+
+  --color-flag-blue: #0099b5;
+  --color-flag-red: #ce1126;
+  --color-flag-green: #1eb53a;
+}
+
+/* ---------------------------------------------------------------- animated backgrounds */
+
+/* Fixed decorative layer behind the content: drifting azure and green light, a faint flag-colour ribbon and a
+   slow-moving dot grid. Purely decorative (aria-hidden, no pointer events). */
+.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, #f6fbfd 0%, #f4faf6 100%);
+}
+
+.animated-bg__blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.45;
+  will-change: transform;
+}
+
+.animated-bg__blob--blue {
+  width: 42rem;
+  height: 42rem;
+  top: -14rem;
+  left: -12rem;
+  background: radial-gradient(circle, #6fc9e3 0%, transparent 70%);
+  animation: blob-drift-a 26s ease-in-out infinite alternate;
+}
+
+.animated-bg__blob--green {
+  width: 38rem;
+  height: 38rem;
+  bottom: -16rem;
+  right: -10rem;
+  background: radial-gradient(circle, #78d893 0%, transparent 70%);
+  animation: blob-drift-b 30s ease-in-out infinite alternate;
+}
+
+.animated-bg__blob--white {
+  width: 30rem;
+  height: 30rem;
+  top: 35%;
+  left: 45%;
+  background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+  opacity: 0.9;
+  animation: blob-drift-c 34s ease-in-out infinite alternate;
+}
+
+.animated-bg__dots {
+  position: absolute;
+  inset: -40px;
+  background-image: radial-gradient(rgba(0, 124, 151, 0.12) 1px, transparent 1px);
+  background-size: 28px 28px;
+  animation: dots-pan 60s linear infinite;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 75%);
+}
+
+/* Thin moving ribbon in flag colours along the top edge. */
+.flag-ribbon {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  background: linear-gradient(90deg, #0099b5 0 32%, #ce1126 32% 33.5%, #ffffff 33.5% 66.5%, #ce1126 66.5% 68%, #1eb53a 68% 100%);
+}
+
+.flag-ribbon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  width: 30%;
+  animation: ribbon-flow 6s ease-in-out infinite;
+}
+
+/* Hero banner: slow shimmering light over the azure->green gradient. */
+.hero-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.18) 45%, transparent 60%);
+  background-size: 250% 100%;
+  animation: hero-sweep 9s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------- waving flag */
+
+.flag-wave {
+  transform-origin: left center;
+  animation: flag-sway 6s ease-in-out infinite;
+  filter: drop-shadow(0 10px 18px rgba(6, 42, 53, 0.25));
+}
+
+/* Moving light and shade across the cloth, so the flat SVG reads as fabric in the wind. */
+.flag-wave__shade {
+  background: linear-gradient(90deg,
+      rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.14) 12%, rgba(255, 255, 255, 0.16) 25%, rgba(0, 0, 0, 0.12) 38%,
+      rgba(255, 255, 255, 0.14) 50%, rgba(0, 0, 0, 0.12) 62%, rgba(255, 255, 255, 0.16) 75%, rgba(0, 0, 0, 0.14) 88%, rgba(0, 0, 0, 0) 100%);
+  background-size: 200% 100%;
+  mix-blend-mode: overlay;
+  animation: flag-ripple 3.2s linear infinite;
+}
+
+/* ---------------------------------------------------------------- entrance */
+
+.fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes blob-drift-a { to { transform: translate(10rem, 6rem) scale(1.15); } }
+@keyframes blob-drift-b { to { transform: translate(-12rem, -8rem) scale(1.1); } }
+@keyframes blob-drift-c { to { transform: translate(-16rem, 4rem) scale(0.85); } }
+@keyframes dots-pan { to { transform: translate(28px, 28px); } }
+@keyframes ribbon-flow { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+@keyframes hero-sweep { 0%, 100% { background-position: 120% 0; } 50% { background-position: -20% 0; } }
+@keyframes flag-sway {
+  0%, 100% { transform: perspective(700px) rotateY(-6deg) skewY(0.6deg); }
+  50% { transform: perspective(700px) rotateY(4deg) skewY(-0.8deg); }
+}
+@keyframes flag-ripple { to { background-position: -200% 0; } }
+@keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-bg__blob, .animated-bg__dots, .flag-ribbon::after, .hero-shine::after, .flag-wave, .flag-wave__shade, .fade-up {
+    animation: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------- press feedback
+   Every button and button-like link gives immediate tactile feedback: a short press-in (scale) and smooth colour
+   change; keyboard focus gets a clearly visible azure ring. Common pattern (Material/Apple HIG "pressed" state). */
+@layer base {
+  button, [role="button"], header nav a, .btn {
+    transition: transform 120ms ease, box-shadow 200ms ease, background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+  }
+  button:not(:disabled):active, [role="button"]:active, header nav a:active, .btn:active {
+    transform: scale(0.96);
+  }
+  button:not(:disabled):hover, .btn:hover {
+    box-shadow: 0 4px 14px -6px rgba(0, 124, 151, 0.45);
+  }
+  :focus-visible {
+    outline: 2px solid #0099b5;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button, [role="button"], header nav a, .btn { transition: none; }
+  button:not(:disabled):active, [role="button"]:active, header nav a:active, .btn:active { transform: none; }
+}

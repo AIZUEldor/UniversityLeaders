@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { homeFor, useAuth, type CurrentUser } from "@/lib/auth";
 import { ROLE_LABELS, type Role } from "@/lib/data";
@@ -95,9 +97,14 @@ export function PrivateShell({ title, items, children }: { title: string; items:
   const signedIn: CurrentUser = state.user;
   return (
     <div className="min-h-screen md:flex">
-      <aside className="border-b border-slate-800 bg-slate-900 text-slate-200 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-b-0">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <div className="font-bold text-white">{title}</div>
+      <AnimatedBackground />
+      <aside className="relative border-b border-slate-800 bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-200 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:overflow-y-auto md:border-b-0">
+        <div className="flag-ribbon" aria-hidden="true" />
+        <div className="flex items-center gap-3 px-4 py-4">
+          <Link href="/" className="btn shrink-0 rounded-lg bg-white px-1.5 py-1" title="Ommaviy sayt">
+            <Image src="/ozmu-logo.png" alt="O'zMU Yoshlar ittifoqi logotipi" width={291} height={128} className="h-7 w-auto" />
+          </Link>
+          <div className="min-w-0 text-sm font-bold leading-tight text-white">{title}</div>
           <button
             className="ml-auto rounded-md border border-slate-600 px-3 py-1 text-sm md:hidden"
             onClick={() => setOpen(!open)}

@@ -4,38 +4,65 @@ import Link from "next/link";
 import { useCallback } from "react";
 import { ManagementMessage } from "@/components/admin/ManagementUi";
 import { PersonPhoto } from "@/components/PersonPhoto";
+import { UzFlag } from "@/components/UzFlag";
 import { publicApi, type PublicFaculty } from "@/lib/publicApi";
 import { usePublicRequest } from "@/lib/usePublicRequest";
 
 function FacultyCard({ faculty, position }: { faculty: PublicFaculty; position: number }) {
-  return <Link href={`/fakultetlar/${faculty.id}`}
-    className="group flex h-full flex-col items-center rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-    <span className="self-start text-xs font-semibold uppercase tracking-wide text-indigo-600">{position}-fakultet</span>
-    <PersonPhoto photoId={faculty.leaderPhotoId} name={faculty.leaderName} size="lg" />
-    <h3 className="mt-3 text-base font-semibold leading-snug">{faculty.name}</h3>
-    {faculty.description && <p className="mt-1 text-xs text-slate-500">{faculty.description}</p>}
-    <p className={`mt-3 text-sm ${faculty.leaderName ? "font-medium text-slate-800" : "italic text-slate-400"}`}>
-      {faculty.leaderName ?? "Yetakchi tayinlanmagan"}
-    </p>
-    <p className="text-xs text-slate-500">Fakultet yetakchisi</p>
-    <span className="mt-auto pt-3 text-xs font-medium text-indigo-700 group-hover:underline">Profilni ko&apos;rish →</span>
+  return <Link href={`/fakultetlar/${faculty.id}`} style={{ animationDelay: `${Math.min(position, 13) * 45}ms` }}
+    className="fade-up btn group relative grid w-full grid-cols-[auto_1fr] items-center gap-x-4 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/85 p-4 text-left shadow-sm backdrop-blur transition hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg focus:outline-none sm:w-[calc(50%-0.5rem)] lg:flex lg:w-[calc(33.333%-0.667rem)] lg:flex-col lg:items-center lg:p-5 lg:text-center xl:w-[calc(25%-0.75rem)]">
+    <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-white to-violet-500 opacity-80" />
+    <div className="row-span-4 transition duration-300 group-hover:scale-105 lg:order-2 lg:mt-2"><PersonPhoto photoId={faculty.leaderPhotoId} name={faculty.leaderName} size="card" /></div>
+    <span className="justify-self-start rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-700 lg:order-1 lg:self-start">{position}-fakultet</span>
+    <h3 className="mt-1 text-sm font-semibold leading-snug text-slate-900 lg:order-3 lg:mt-3 lg:text-base">{faculty.name}</h3>
+    {faculty.description && <p className="mt-0.5 text-xs text-slate-500 lg:order-4 lg:mt-1">{faculty.description}</p>}
+    <div className="mt-1 w-full lg:order-5 lg:mt-3 lg:border-t lg:border-slate-100 lg:pt-3">
+      <p className="hidden text-[11px] uppercase tracking-wide text-slate-400 lg:block">Fakultet yetakchisi</p>
+      <p className={`mt-0.5 text-sm ${faculty.leaderName ? "font-semibold text-slate-800" : "italic text-slate-400"}`}>{faculty.leaderName ?? "Yetakchi tayinlanmagan"}</p>
+    </div>
+    <span className="hidden pt-3 text-xs font-semibold text-indigo-700 transition group-hover:translate-x-0.5 lg:order-6 lg:mt-auto lg:block">Profilni ko&apos;rish →</span>
   </Link>;
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return <div className="rounded-xl bg-white/15 px-4 py-3 backdrop-blur-sm ring-1 ring-white/25">
+    <div className="text-2xl font-bold leading-none">{value}</div>
+    <div className="mt-1 text-xs text-white/85">{label}</div>
+  </div>;
 }
 
 export default function Home() {
   const request = useCallback(() => publicApi.directory(), []);
   const { data, loading, error, reload } = usePublicRequest(request);
-  return <div className="space-y-8">
-    <section className="rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow">
-      <h1 className="text-2xl font-bold md:text-3xl">Universitet yetakchilari platformasi</h1>
-      <p className="mt-2 text-indigo-100">Universitet yetakchisi: <strong>{data?.universityLeaderName ?? "Tayinlanmagan"}</strong> · 13 fakultet yetakchisi · 91 fakultet koordinatori (har fakultetda 7 yo&apos;nalish)</p>
+  return <div className="space-y-10">
+    <section className="hero-shine fade-up grid items-center gap-8 rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-600 p-6 text-white shadow-xl md:grid-cols-[1.4fr_1fr] md:p-10">
+      <div>
+        <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider ring-1 ring-white/25">O&apos;zMU Yoshlar ittifoqi</p>
+        <h1 className="mt-4 text-3xl font-extrabold leading-tight md:text-4xl">Universitet yetakchilari platformasi</h1>
+        <p className="mt-3 max-w-xl text-white/90">Fakultet yetakchilari, ularning 7 yo&apos;nalishdagi koordinatorlari va tasdiqlangan ishlari bir joyda.</p>
+        <p className="mt-2 text-sm text-white/80">Universitet yetakchisi: <strong className="text-white">{data?.universityLeaderName ?? "Tayinlanmagan"}</strong></p>
+        <div className="mt-6 grid max-w-md grid-cols-3 gap-3">
+          <Stat value="13" label="fakultet" />
+          <Stat value="7" label="yo'nalish" />
+          <Stat value="91" label="koordinator" />
+        </div>
+        <div className="mt-6 flex flex-wrap gap-3 text-sm font-semibold">
+          <Link href="/reyting" className="btn rounded-lg bg-white px-4 py-2 text-indigo-700 shadow hover:bg-indigo-50">Reytingni ko&apos;rish</Link>
+          <Link href="/completed-work" className="btn rounded-lg px-4 py-2 text-white ring-1 ring-white/60 hover:bg-white/10">Bajarilgan ishlar</Link>
+        </div>
+      </div>
+      <div className="mx-auto w-full max-w-xs md:max-w-sm">
+        <UzFlag />
+      </div>
     </section>
+
     {error !== null && <ManagementMessage error={error} onRetry={() => void reload()} />}
-    {loading ? <p role="status" className="text-sm text-slate-500">Fakultetlar yuklanmoqda...</p> : error !== null && data === null ? null : <>
-      <section><h2 className="mb-3 text-xl font-semibold">Fakultet yetakchilari</h2>
-        {data?.faculties.length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Hozircha fakultetlar kiritilmagan.</p>
-          : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{data?.faculties.map((faculty, index) => <FacultyCard key={faculty.id} faculty={faculty} position={index + 1} />)}</div>}
-      </section>
-    </>}
+    {loading ? <p role="status" className="text-sm text-slate-500">Fakultetlar yuklanmoqda...</p> : error !== null && data === null ? null : <section>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <div><h2 className="text-2xl font-bold text-slate-900">Fakultet yetakchilari</h2><p className="text-sm text-slate-500">Fakultetni tanlang: yetakchi, 7 yo&apos;nalish koordinatorlari va tasdiqlangan ishlar.</p></div>
+      </div>
+      {data?.faculties.length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Hozircha fakultetlar kiritilmagan.</p>
+        : <div className="flex flex-wrap justify-center gap-4">{data?.faculties.map((faculty, index) => <FacultyCard key={faculty.id} faculty={faculty} position={index + 1} />)}</div>}
+    </section>}
   </div>;
 }

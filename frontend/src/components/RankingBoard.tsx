@@ -25,9 +25,9 @@ export function RankingBoard() {
       <p className="text-sm text-slate-600">{official
         ? "Rasmiy reyting: tasdiqlangan hisobotlarning umumiy bali bo'yicha."
         : "Qo'shimcha ko'rinish: tasdiqlangan ishlar soni bo'yicha tartib. Rasmiy o'rin alohida ustunda ko'rsatilgan."}</p>
-      <div role="group" aria-label="Reyting ko'rsatkichi" className="flex rounded-lg border border-slate-300 bg-white p-1 text-sm">
+      <div role="group" aria-label="Reyting ko'rsatkichi" className="flex w-full rounded-lg border border-slate-300 bg-white p-1 text-sm sm:w-auto">
         {METRICS.map((item) => <button key={item.value} type="button" onClick={() => setMetric(item.value)} aria-pressed={metric === item.value}
-          className={`rounded-md px-3 py-1 ${metric === item.value ? "bg-indigo-600 text-white" : "text-slate-600"}`}>{item.label}</button>)}
+          className={`min-w-0 flex-1 rounded-md px-2 py-1 sm:flex-none sm:px-3 ${metric === item.value ? "bg-indigo-600 text-white" : "text-slate-600"}`}>{item.label}</button>)}
       </div>
     </div>
     {error !== null && <ManagementMessage error={error} onRetry={() => void reload()} />}
@@ -35,15 +35,16 @@ export function RankingBoard() {
       : error !== null && data === null ? null
       : rows.length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Hozircha fakultetlar yo&apos;q.</p>
       : <>
-        <ol className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">{rows.map((row: RankedRow) =>
-          <li key={row.facultyId} className="grid grid-cols-[2.5rem_minmax(5rem,1fr)_minmax(4rem,2fr)_3rem] items-center gap-2 rounded-md py-1 text-sm">
-            <span className={`font-bold ${row.shownPosition <= 3 ? "text-amber-600" : "text-slate-400"}`}>#{row.shownPosition}</span>
-            <span className="truncate font-medium" title={row.facultyName}>{row.facultyName}</span>
-            <div className="h-6 overflow-hidden rounded bg-slate-100" aria-hidden="true"><div className="h-full rounded bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${row[metric] / max * 100}%` }} /></div>
-            <span className="text-right font-semibold tabular-nums">{row[metric]}</span>
+        {rows.every((row: RankedRow) => row.totalScore === 0) && <p className="fade-up rounded-xl border border-indigo-100 bg-indigo-50/80 px-4 py-3 text-sm text-indigo-900">Hali tasdiqlangan hisobot yo&apos;q: barcha fakultetlar 0 ball bilan teng turibdi. Birinchi tasdiqlangan ish reytingni boshlab beradi.</p>}
+        <ol className="fade-up space-y-2 rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-sm backdrop-blur md:p-6">{rows.map((row: RankedRow) =>
+          <li key={row.facultyId} className="grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] items-center gap-x-2 gap-y-1 rounded-md border-b border-slate-100 py-2 text-sm last:border-0 sm:grid-cols-[2.5rem_minmax(5rem,1fr)_minmax(4rem,2fr)_3rem] sm:border-0 sm:py-1">
+            <span className={`font-bold ${row.shownPosition <= 3 && row[metric] > 0 ? "text-amber-600" : "text-slate-400"}`}>{row.shownPosition <= 3 && row[metric] > 0 ? ["🥇", "🥈", "🥉"][row.shownPosition - 1] : `#${row.shownPosition}`}</span>
+            <span className="min-w-0 break-words font-medium sm:truncate" title={row.facultyName}>{row.facultyName}</span>
+            <div className="col-span-2 col-start-2 row-start-2 h-2 overflow-hidden rounded bg-slate-100 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:h-6" aria-hidden="true"><div className="h-full rounded bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${row[metric] / max * 100}%` }} /></div>
+            <span className="col-start-3 row-start-1 text-right font-semibold tabular-nums sm:col-start-4">{row[metric]}</span>
           </li>)}
         </ol>
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full text-sm">
+        <div className="fade-up hidden overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/85 shadow-sm backdrop-blur sm:block"><table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500"><tr>
             <th className="px-4 py-2">{official ? "Rasmiy o'rin" : "O'rin (ishlar soni)"}</th>
             <th className="px-4 py-2">Fakultet</th>
