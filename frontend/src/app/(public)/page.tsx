@@ -26,6 +26,22 @@ function FacultyCard({ faculty, position }: { faculty: PublicFaculty; position: 
   </Link>;
 }
 
+/** The head of all faculty leaders: one featured card, set apart from the faculty grid by size and a gold frame. */
+function UniversityLeaderCard({ name, photoId }: { name: string | null; photoId: string | null }) {
+  const t = useT();
+  return <section aria-labelledby="university-leader" className="fade-up relative overflow-hidden rounded-3xl border-2 border-amber-300 bg-white/90 p-6 shadow-xl backdrop-blur md:p-8">
+    <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400" />
+    <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+      <div className="rounded-full bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-500 p-1.5 shadow-lg"><PersonPhoto photoId={photoId} name={name} size="xl" /></div>
+      <div className="min-w-0">
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800"><span aria-hidden="true">★</span>{t("Universitet yetakchilari boshlig'i")}</p>
+        <h2 id="university-leader" className={`mt-3 text-2xl font-extrabold md:text-3xl ${name ? "text-slate-900" : "italic text-slate-400"}`}>{name ?? t("Tayinlanmagan")}</h2>
+        <p className="mt-2 max-w-xl text-sm text-slate-600">{t("O'zMU Yoshlar ittifoqi. 13 fakultet yetakchisining ishini boshqaradi, hisobotlarni tasdiqlaydi va reytingni yuritadi.")}</p>
+      </div>
+    </div>
+  </section>;
+}
+
 function Stat({ value, label }: { value: string; label: string }) {
   const t = useT();
   return <div className="rounded-xl bg-white/15 px-4 py-3 backdrop-blur-sm ring-1 ring-white/25">
@@ -44,7 +60,6 @@ export default function Home() {
         <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider ring-1 ring-white/25">{t("O'zMU Yoshlar ittifoqi")}</p>
         <h1 className="mt-4 text-3xl font-extrabold leading-tight md:text-4xl">{t("Universitet yetakchilari platformasi")}</h1>
         <p className="mt-3 max-w-xl text-white/90">{t("Fakultet yetakchilari, ularning 7 yo'nalishdagi koordinatorlari va tasdiqlangan ishlari bir joyda.")}</p>
-        <p className="mt-2 text-sm text-white/80">{t("Universitet yetakchisi:")} <strong className="text-white">{data?.universityLeaderName ?? t("Tayinlanmagan")}</strong></p>
         <div className="mt-6 grid max-w-md grid-cols-3 gap-3">
           <Stat value="13" label="fakultet" />
           <Stat value="7" label="yo'nalish" />
@@ -61,6 +76,7 @@ export default function Home() {
     </section>
 
     {error !== null && <ManagementMessage error={error} onRetry={() => void reload()} />}
+    {data && <UniversityLeaderCard name={data.universityLeaderName} photoId={data.universityLeaderPhotoId} />}
     {loading ? <p role="status" className="text-sm text-slate-500">{t("Fakultetlar yuklanmoqda...")}</p> : error !== null && data === null ? null : <section>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div><h2 className="text-2xl font-bold text-slate-900">{t("Fakultet yetakchilari")}</h2><p className="text-sm text-slate-500">{t("Fakultetni tanlang: yetakchi, 7 yo'nalish koordinatorlari va tasdiqlangan ishlar.")}</p></div>

@@ -227,6 +227,17 @@ public sealed class FacultyCoordinatorTests : IAsyncLifetime
         Assert.Equal((await leaderPhoto.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("photoId").GetString(), facultyCard.GetProperty("leaderPhotoId").GetString());
         Assert.Equal(HttpStatusCode.Forbidden, (await UploadPhotoAsync(s.LeaderA, s.CsrfA, $"/api/admin/faculty-leaders/{s.LeaderAId}/photo", Png, "image/png")).StatusCode);
 
+        // The University Leader sets only their own photo (account from the session); it is featured in the directory.
+        HttpResponseMessage ownPhoto = await UploadPhotoAsync(s.Admin, s.AdminCsrf, "/api/admin/profile/photo", Jpeg, "image/jpeg");
+        Assert.Equal(HttpStatusCode.OK, ownPhoto.StatusCode);
+        string ownPhotoId = (await ownPhoto.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("photoId").GetString()!;
+        Assert.Equal(ownPhotoId, (await anonymous.GetFromJsonAsync<JsonElement>("/api/public/directory")).GetProperty("universityLeaderPhotoId").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync($"/api/public/photos/{ownPhotoId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await UploadPhotoAsync(s.LeaderA, s.CsrfA, "/api/admin/profile/photo", Png, "image/png")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await s.Admin.SendJsonAsync(HttpMethod.Delete, "/api/admin/profile/photo", null, s.AdminCsrf)).StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await anonymous.GetFromJsonAsync<JsonElement>("/api/public/directory")).GetProperty("universityLeaderPhotoId").ValueKind);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/api/public/photos/{ownPhotoId}")).StatusCode);
+
         // Deactivated profiles stop serving their photo.
         uint version = (await s.LeaderA.GetFromJsonAsync<JsonElement>(url)).GetProperty("version").GetUInt32();
         Assert.Equal(HttpStatusCode.OK, (await s.LeaderA.PostAsync($"{url}/deactivate", new { version }, s.CsrfA)).StatusCode);

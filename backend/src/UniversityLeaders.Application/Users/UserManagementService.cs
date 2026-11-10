@@ -49,6 +49,11 @@ public interface IUserManagementService
 
     Task<ManagedUserResponse> RemoveFacultyCoordinatorPhotoAsync(Guid facultyLeaderId, Guid id, CancellationToken cancellationToken);
 
+    /// <summary>University Leader sets or removes their own public photo (featured on the public home page).</summary>
+    Task<ManagedUserResponse> SetOwnPhotoAsync(Guid universityLeaderId, Attachments.AttachmentUpload upload, CancellationToken cancellationToken);
+
+    Task<ManagedUserResponse> RemoveOwnPhotoAsync(Guid universityLeaderId, CancellationToken cancellationToken);
+
     /// <summary>Offline recovery for the University Leader; only reachable from the server-side CLI command, never over HTTP.</summary>
     Task<ProvisionedUserResponse> RecoverUniversityLeaderAsync(string? userName, CancellationToken cancellationToken);
 }
@@ -175,6 +180,16 @@ internal sealed class UserManagementService : IUserManagementService
     {
         int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
         return await RemovePhotoCoreAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, facultyId, cancellationToken);
+    }
+
+    public async Task<ManagedUserResponse> SetOwnPhotoAsync(Guid universityLeaderId, Attachments.AttachmentUpload upload, CancellationToken cancellationToken)
+    {
+        return await ApplyPhotoAsync(universityLeaderId, await GetActiveUniversityLeaderAsync(universityLeaderId, cancellationToken), upload, cancellationToken);
+    }
+
+    public async Task<ManagedUserResponse> RemoveOwnPhotoAsync(Guid universityLeaderId, CancellationToken cancellationToken)
+    {
+        return await ClearPhotoAsync(universityLeaderId, await GetActiveUniversityLeaderAsync(universityLeaderId, cancellationToken), cancellationToken);
     }
 
     public async Task<ProvisionedUserResponse> RecoverUniversityLeaderAsync(string? userName, CancellationToken cancellationToken)
@@ -305,7 +320,11 @@ internal sealed class UserManagementService : IUserManagementService
     private async Task<ManagedUserResponse> SetPhotoCoreAsync(
         Guid actorId, UserRole role, Guid id, Attachments.AttachmentUpload upload, int? scopeFacultyId, CancellationToken cancellationToken)
     {
-        User user = await GetActiveManagedAsync(role, id, scopeFacultyId, cancellationToken);
+        return await ApplyPhotoAsync(actorId, await GetActiveManagedAsync(role, id, scopeFacultyId, cancellationToken), upload, cancellationToken);
+    }
+
+    private async Task<ManagedUserResponse> ApplyPhotoAsync(Guid actorId, User user, Attachments.AttachmentUpload upload, CancellationToken cancellationToken)
+    {
         (byte[] bytes, string contentType) = await ReadPhotoAsync(upload, cancellationToken);
 
         DateTimeOffset now = _time.GetUtcNow();
@@ -326,7 +345,11 @@ internal sealed class UserManagementService : IUserManagementService
 
     private async Task<ManagedUserResponse> RemovePhotoCoreAsync(Guid actorId, UserRole role, Guid id, int? scopeFacultyId, CancellationToken cancellationToken)
     {
-        User user = await GetActiveManagedAsync(role, id, scopeFacultyId, cancellationToken);
+        return await ClearPhotoAsync(actorId, await GetActiveManagedAsync(role, id, scopeFacultyId, cancellationToken), cancellationToken);
+    }
+
+    private async Task<ManagedUserResponse> ClearPhotoAsync(Guid actorId, User user, CancellationToken cancellationToken)
+    {
         if (user.PhotoId is not Guid photoId)
         {
             return ToResponse(user);
@@ -342,6 +365,17 @@ internal sealed class UserManagementService : IUserManagementService
         _audit.Add(Audit.Entry(actorId, AuditActions.UserPhotoRemoved, nameof(User), user.Id.ToString(), new { Role = user.Role.ToString() }, _time.GetUtcNow()));
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(user);
+    }
+
+    private async Task<User> GetActiveUniversityLeaderAsync(Guid id, CancellationToken cancellationToken)
+    {
+        User? user = await _users.FindByIdAsync(id, cancellationToken);
+        if (user is null || user.Role != UserRole.UniversityLeader || !user.IsActive)
+        {
+            throw new NotFoundException("user_not_found", "Account not found.");
+        }
+
+        return user;
     }
 
     private async Task<User> GetActiveManagedAsync(UserRole role, Guid id, int? scopeFacultyId, CancellationToken cancellationToken)

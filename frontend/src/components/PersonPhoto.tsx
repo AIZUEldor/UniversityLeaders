@@ -3,7 +3,7 @@
 import { apiBaseUrl } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
-const SIZES = { sm: "h-12 w-12", md: "h-20 w-20", lg: "h-28 w-28", card: "h-16 w-16 sm:h-28 sm:w-28" } as const;
+const SIZES = { sm: "h-12 w-12", md: "h-20 w-20", lg: "h-28 w-28", card: "h-16 w-16 sm:h-28 sm:w-28", xl: "h-32 w-32 sm:h-40 sm:w-40" } as const;
 
 /** Public profile photo, or the default avatar when none is set (or the profile is vacant). */
 export function PersonPhoto({ photoId, name, size = "md" }: { photoId: string | null; name: string | null; size?: keyof typeof SIZES }) {

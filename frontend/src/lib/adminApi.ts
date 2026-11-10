@@ -50,15 +50,18 @@ export const facultiesApi = {
   remove: (id: number): Promise<void> => apiRequest<void>(`/api/admin/faculties/${id}`, { method: "DELETE" }),
 };
 
+// An empty id addresses the signed-in account itself (/api/admin/profile/photo).
+const photoPath = (base: string, id: string): string => (id === "" ? `${base}/photo` : `${base}/${id}/photo`);
+
 function photoApi(base: string) {
   return {
     /** Expects an already downsized JPEG/PNG (see lib/photo.ts). */
     setPhoto: (id: string, photo: Blob): Promise<ManagedUserDto> => {
       const form = new FormData();
       form.append("file", photo, "photo.jpg");
-      return apiRequest<ManagedUserDto>(`${base}/${id}/photo`, { method: "PUT", formData: form });
+      return apiRequest<ManagedUserDto>(photoPath(base, id), { method: "PUT", formData: form });
     },
-    removePhoto: (id: string): Promise<ManagedUserDto> => apiRequest<ManagedUserDto>(`${base}/${id}/photo`, { method: "DELETE" }),
+    removePhoto: (id: string): Promise<ManagedUserDto> => apiRequest<ManagedUserDto>(photoPath(base, id), { method: "DELETE" }),
   };
 }
 
@@ -70,6 +73,9 @@ function lifecycleApi(base: string) {
     ...photoApi(base),
   };
 }
+
+/** The signed-in University Leader's own public photo (featured on the public home page). */
+export const ownProfileApi = photoApi("/api/admin/profile");
 
 /** Faculty leaders have a login: user name, one-time temporary password and password reset. */
 export const facultyLeadersApi = {

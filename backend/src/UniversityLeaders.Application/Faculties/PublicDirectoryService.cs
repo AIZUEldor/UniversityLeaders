@@ -16,7 +16,7 @@ public sealed record PublicFacultyResponse(
 
 public sealed record PublicPhoto(byte[] Content, string ContentType);
 
-public sealed record PublicDirectoryResponse(string? UniversityLeaderName, IReadOnlyList<PublicFacultyResponse> Faculties);
+public sealed record PublicDirectoryResponse(string? UniversityLeaderName, Guid? UniversityLeaderPhotoId, IReadOnlyList<PublicFacultyResponse> Faculties);
 
 public interface IPublicDirectoryService
 {
@@ -57,7 +57,8 @@ internal sealed class PublicDirectoryService : IPublicDirectoryService
                     Slot(direction, facultyCoordinators.FirstOrDefault((User user) => user.FacultyId == faculty.Id && user.DirectionId == direction.Id))).ToList());
         }).ToList();
 
-        return new PublicDirectoryResponse(universityLeaders.FirstOrDefault()?.FullName, publicFaculties);
+        User? universityLeader = universityLeaders.FirstOrDefault();
+        return new PublicDirectoryResponse(universityLeader?.FullName, universityLeader?.PhotoId, publicFaculties);
     }
 
     public async Task<PublicPhoto?> GetPhotoAsync(Guid photoId, CancellationToken cancellationToken)

@@ -20,6 +20,7 @@ export interface PublicFaculty {
 
 export interface PublicDirectory {
   universityLeaderName: string | null;
+  universityLeaderPhotoId: string | null;
   faculties: PublicFaculty[];
 }
 
