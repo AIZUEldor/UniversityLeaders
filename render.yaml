@@ -14,7 +14,7 @@ services:
     dockerContext: ./backend
     autoDeploy: false            # deploy deliberately; never on every push
     healthCheckPath: /health
-    # Secret file (dashboard -> Environment -> Secret Files): dataprotection.pfx -> /etc/secrets/dataprotection.pfx
+    # Secret file (dashboard -> Environment -> Secret Files): dataprotection.pem (text: certificate + encrypted key)
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -31,7 +31,7 @@ services:
       - key: Database__ConnectionString
         sync: false              # Neon direct endpoint: Host=...;Database=...;Username=...;Password=...;SSL Mode=Require
       - key: DataProtection__Certificate__Path
-        value: /etc/secrets/dataprotection.pfx
+        value: /etc/secrets/dataprotection.pem
       - key: DataProtection__Certificate__Password
         sync: false
       - key: Bootstrap__Token

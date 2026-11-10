@@ -546,6 +546,12 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("faculty_id");
 
+                    b.Property<int>("FailedLoginCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_login_count");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -557,6 +563,10 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<DateTimeOffset?>("LockoutEndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_ends_at");
 
                     b.Property<bool>("MustChangePassword")
                         .ValueGeneratedOnAdd()

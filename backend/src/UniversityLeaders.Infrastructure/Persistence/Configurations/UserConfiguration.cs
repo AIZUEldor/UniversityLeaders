@@ -39,6 +39,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property((User u) => u.Version).IsRowVersion();
         builder.Property((User u) => u.MustChangePassword).HasDefaultValue(true);
         builder.Property((User u) => u.IsActive).HasDefaultValue(true);
+        builder.Property((User u) => u.FailedLoginCount).HasDefaultValue(0);
 
         // citext: unique regardless of case ("Ali" and "ali" collide). Covers inactive accounts too, so names are never reused.
         builder.HasIndex((User u) => u.UserName).IsUnique();

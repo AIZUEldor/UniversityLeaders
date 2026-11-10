@@ -32,6 +32,12 @@ public class User
     /// <summary>Concurrency token (PostgreSQL xmin). Concurrent account updates fail instead of overwriting each other.</summary>
     public uint Version { get; set; }
 
+    /// <summary>Consecutive wrong passwords since the last successful login, lockout or reset.</summary>
+    public int FailedLoginCount { get; set; }
+
+    /// <summary>While in the future, every login is refused (even with the right password).</summary>
+    public DateTimeOffset? LockoutEndsAt { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? DeactivatedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

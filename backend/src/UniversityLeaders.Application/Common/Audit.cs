@@ -11,6 +11,10 @@ public static class AuditActions
     public const string UserDeactivated = "user.deactivated";
     public const string UserPasswordReset = "user.password_reset";
     public const string UserPasswordRecovered = "user.password_recovered";
+    public const string AuthLoginSucceeded = "auth.login_succeeded";
+    public const string AuthLockedOut = "auth.locked_out";
+    public const string AuthLogout = "auth.logout";
+    public const string AuthPasswordChanged = "auth.password_changed";
     public const string FacultyCreated = "faculty.created";
     public const string FacultyRenamed = "faculty.renamed";
     public const string FacultyDeleted = "faculty.deleted";

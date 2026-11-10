@@ -33,6 +33,11 @@ auto-deploy or delete it**: the current frontend needs `NEXT_PUBLIC_API_URL` and
   (in `backend/`, `ASPNETCORE_ENVIRONMENT=Development`, `Database__ConnectionString=<Neon>`).
 - **University Leader recovery (no shell):** run `dotnet run --project src/UniversityLeaders.Api -- recover-university-leader <userName>`
   the same way from the trusted machine; it only needs the database.
+- **Data Protection certificate:** use the text `.pem` form (certificate + encrypted private key in one file); Render
+  Secret Files are text, so a binary `.pfx` may not survive the upload. Generate it as in backend/README.md, e.g.
+  `openssl req -x509 -newkey rsa:3072 -sha256 -days 1095 -subj "/CN=UniversityLeaders Data Protection" -keyout key.pem -out cert.pem -passout file:password.txt`
+  then concatenate `cert.pem` + `key.pem` into `dataprotection.pem`. The password file must not end with a newline or `\r`
+  (OpenSSL keeps a trailing `\r` as part of the password; .NET and the Render dashboard do not).
 - **Backups:** Neon free keeps a short restore window only; take a weekly `pg_dump` (section 4); it includes the files.
 - Upgrade path: `plan: starter`, `preDeployCommand: /app/efbundle`, custom domains (section 1) and remove the proxy.
 

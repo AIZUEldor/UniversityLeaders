@@ -133,6 +133,10 @@ after login). Send requests with `credentials: "include"`.
 - **Revocation:** changing the password and logging out rotate the security stamp, which ends **all** sessions of that account (logout is "log out everywhere").
 - **CSRF:** ASP.NET antiforgery (HTTP-only `__Host-ul_csrf` cookie + `X-CSRF-TOKEN` header) on every POST/PUT/PATCH/DELETE, including login. Bootstrap is exempt (no ambient credentials; it has its own header token).
 - **CORS:** only the exact origins in `Cors:AllowedOrigins` (https, or loopback for development), with credentials, methods GET/POST/PUT/DELETE and headers `Content-Type`, `X-CSRF-TOKEN`. Empty = no cross-origin access.
+- **Account lockout (Phase 8A):** 10 consecutive wrong passwords lock the account for 15 minutes (`users.failed_login_count`,
+  `users.lockout_ends_at`). While locked even the right password gets the generic 401 `invalid_credentials`; a successful
+  login resets the counter and a password reset lifts the lockout. Audit: `auth.login_succeeded`, `auth.locked_out`,
+  `auth.logout`, `auth.password_changed`; single failures are counted, not audited.
 - **Rate limiting:** login, bootstrap and change-password share a fixed window per client IP (`RateLimiting:Login`, default 5 per 60 s) → 429 with `Retry-After`.
 - **Forced password change:** the default and fallback authorization policy requires a signed-in user without a pending password change, so every endpoint (present and future) is locked until the change, except `me`, `change-password` and `logout`. Pending users get 403 `password_change_required`.
 - **Roles:** policy `UniversityLeader` = signed in + role + password changed. Future admin endpoints use `[Authorize(Policy = AuthPolicies.UniversityLeader)]`.

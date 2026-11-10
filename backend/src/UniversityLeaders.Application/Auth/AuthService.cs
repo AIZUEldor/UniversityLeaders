@@ -8,6 +8,10 @@ namespace UniversityLeaders.Application.Auth;
 
 internal sealed class AuthService : IAuthService
 {
+    /// <summary>Per-account lockout against distributed guessing (the per-IP rate limit alone does not cover it).</summary>
+    private const int MaxFailedLogins = 10;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
     // Hash of a random value, verified when the user does not exist so response time does not reveal valid user names.
     private static string? _dummyHash;
 
@@ -76,18 +80,30 @@ internal sealed class AuthService : IAuthService
             throw new InvalidCredentialsException();
         }
 
+        DateTimeOffset now = _time.GetUtcNow();
+        if (user.LockoutEndsAt > now)
+        {
+            // Same response and timing as a wrong password: a lockout never reveals that the account exists.
+            _hasher.Verify(GetDummyHash(), password);
+            throw new InvalidCredentialsException();
+        }
+
         PasswordVerification result = _hasher.Verify(user.PasswordHash, password);
         if (result == PasswordVerification.Failed)
         {
+            await RecordFailedLoginAsync(user, now, cancellationToken);
             throw new InvalidCredentialsException();
         }
 
         if (result == PasswordVerification.SuccessRehashNeeded)
         {
             user.PasswordHash = _hasher.Hash(password);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
+        user.FailedLoginCount = 0;
+        user.LockoutEndsAt = null;
+        _audit.Add(Audit.Entry(user.Id, AuditActions.AuthLoginSucceeded, nameof(User), user.Id.ToString(), new { user.UserName }, now));
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new AuthResult(ToSession(user), ToResponse(user));
     }
 
@@ -131,6 +147,7 @@ internal sealed class AuthService : IAuthService
         user.PasswordHash = _hasher.Hash(request.NewPassword!);
         user.MustChangePassword = false;
         user.SecurityStamp = InputRules.NewSecurityStamp();
+        _audit.Add(Audit.Entry(user.Id, AuditActions.AuthPasswordChanged, nameof(User), user.Id.ToString(), new { user.UserName }, _time.GetUtcNow()));
 
         // xmin token: a concurrent change of the same account fails with ConflictException instead of overwriting.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -146,7 +163,33 @@ internal sealed class AuthService : IAuthService
         }
 
         user.SecurityStamp = InputRules.NewSecurityStamp();
+        _audit.Add(Audit.Entry(user.Id, AuditActions.AuthLogout, nameof(User), user.Id.ToString(), new { user.UserName }, _time.GetUtcNow()));
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Counts the failure and starts a lockout at the limit. Only the lockout is audited, so failed guesses cannot flood
+    /// the audit log. Best effort: a concurrent change of the same account (409) must not turn into a different error.
+    /// </summary>
+    private async Task RecordFailedLoginAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        user.FailedLoginCount++;
+        if (user.FailedLoginCount >= MaxFailedLogins)
+        {
+            user.FailedLoginCount = 0;
+            user.LockoutEndsAt = now.Add(LockoutDuration);
+            _audit.Add(Audit.Entry(null, AuditActions.AuthLockedOut, nameof(User), user.Id.ToString(),
+                new { user.UserName, Until = user.LockoutEndsAt }, now));
+        }
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConflictException)
+        {
+            // Another request changed the account at the same moment; this attempt is still rejected.
+        }
     }
 
     private async Task<User> GetActiveUserAsync(Guid userId, CancellationToken cancellationToken)

@@ -197,6 +197,8 @@ internal sealed class UserManagementService : IUserManagementService
         user.PasswordHash = _hasher.Hash(temporaryPassword);
         user.MustChangePassword = true;
         user.SecurityStamp = InputRules.NewSecurityStamp();
+        user.FailedLoginCount = 0; // a reset also lifts a lockout
+        user.LockoutEndsAt = null;
         _audit.Add(Audit.Entry(actorId, auditAction, nameof(User), user.Id.ToString(), new { user.UserName, Role = user.Role.ToString() }, now));
 
         // xmin token: a concurrent change of the same account fails with 409 instead of overwriting.
