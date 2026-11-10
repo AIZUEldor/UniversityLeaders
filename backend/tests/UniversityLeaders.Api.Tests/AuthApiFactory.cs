@@ -37,6 +37,12 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
 
     public string BootstrapToken { get; }
 
+    /// <summary>
+    /// Keep the 13 faculties seeded by the migrations. Off by default: most tests create their own faculties and the
+    /// 13-faculty limit would otherwise block that.
+    /// </summary>
+    public bool KeepSeedData { get; init; }
+
     public string ConnectionString => new NpgsqlConnectionStringBuilder(_serverConnectionString) { Database = _databaseName }.ConnectionString;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -84,6 +90,10 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
             using IServiceScope scope = Services.CreateScope();
             AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await db.Database.MigrateAsync();
+            if (!KeepSeedData)
+            {
+                await db.Faculties.ExecuteDeleteAsync(); // fresh test database: nothing references them yet
+            }
         }
         catch
         {

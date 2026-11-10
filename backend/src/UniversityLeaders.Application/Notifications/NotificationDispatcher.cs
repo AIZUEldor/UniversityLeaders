@@ -32,14 +32,10 @@ internal sealed class NotificationDispatcher
     /// <summary>Notifies whoever currently reviews this report (requires <see cref="Report.Author"/>). None if the seat is vacant.</summary>
     public async Task QueueReportSubmittedAsync(Report report, CancellationToken cancellationToken)
     {
-        IReadOnlyList<User> reviewers = report.Author.Role switch
-        {
-            UserRole.FacultyCoordinator when report.FacultyId is not null =>
-                await _users.ListByRoleAsync(UserRole.FacultyLeader, report.FacultyId, includeInactive: false, cancellationToken),
-            UserRole.FacultyLeader or UserRole.UniversityCoordinator =>
-                await _users.ListByRoleAsync(UserRole.UniversityLeader, null, includeInactive: false, cancellationToken),
-            _ => Array.Empty<User>(),
-        };
+        // The University Leader reviews every report.
+        IReadOnlyList<User> reviewers = report.Author.Role == UserRole.UniversityLeader
+            ? Array.Empty<User>()
+            : await _users.ListByRoleAsync(UserRole.UniversityLeader, null, includeInactive: false, cancellationToken);
 
         foreach (User reviewer in reviewers)
         {

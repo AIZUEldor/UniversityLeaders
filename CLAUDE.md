@@ -22,12 +22,14 @@
 
 ### Roles and fixed counts
 
-| Role | Count |
-|------|-------|
-| University leader | 1 |
-| Faculty leaders | 13 |
-| University coordinators | 7 |
-| Faculty coordinators | 91 |
+| Role | Count | Login |
+|------|-------|-------|
+| University leader (Admin) | 1 | yes |
+| Faculty leaders | 13 | yes |
+| Faculty coordinators (7 directions × 13 faculties) | 91 | no — public profiles managed by their faculty leader |
+
+105 seats, only 14 logins. University coordinators were retired; the `UniversityCoordinator` role value exists only for
+historical rows. Only faculty leaders submit reports; only the University Leader approves them.
 
 ### Reports
 

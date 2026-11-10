@@ -37,6 +37,17 @@ internal static class ManagementSteps
         return (client, body.GetProperty("csrfToken").GetString()!);
     }
 
+    /// <summary>Creates a coordinator profile (no login) through the given manager and returns its id.</summary>
+    public static async Task<Guid> CreateProfileAsync(Actor manager, string url, string fullName, int directionId, string? phone = null, bool phoneIsPublic = false)
+    {
+        HttpResponseMessage response = await manager.Client.PostAsync(url, new { fullName, directionId, phone, phoneIsPublic }, manager.Csrf);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("hasLogin").GetBoolean());
+        Assert.False(body.TryGetProperty("temporaryPassword", out _));
+        return Guid.Parse(body.GetProperty("id").GetString()!);
+    }
+
     public static async Task<string?> AssertStatusAsync(HttpResponseMessage response, HttpStatusCode expected)
     {
         Assert.Equal(expected, response.StatusCode);

@@ -74,7 +74,7 @@ internal sealed class AuthService : IAuthService
         }
 
         User? user = await _users.FindByUserNameAsync(userName, cancellationToken);
-        if (user is null || !user.IsActive || user.PasswordHash is null)
+        if (user is null || !user.IsActive || user.PasswordHash is null || !UserRoles.HasLogin(user.Role))
         {
             _hasher.Verify(GetDummyHash(), password); // equalize timing with the real path
             throw new InvalidCredentialsException();
@@ -110,7 +110,7 @@ internal sealed class AuthService : IAuthService
     public async Task<SessionUser?> ValidateSessionAsync(Guid userId, string securityStamp, CancellationToken cancellationToken)
     {
         User? user = await _users.FindByIdAsync(userId, cancellationToken);
-        if (user is null || !user.IsActive || !FixedTimeEquals(user.SecurityStamp, securityStamp))
+        if (user is null || !user.IsActive || !UserRoles.HasLogin(user.Role) || !FixedTimeEquals(user.SecurityStamp, securityStamp))
         {
             return null;
         }

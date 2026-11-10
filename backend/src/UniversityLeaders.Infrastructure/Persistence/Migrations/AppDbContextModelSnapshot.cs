@@ -230,6 +230,11 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -306,6 +311,34 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_notifications_recipient_id_read_at");
 
                     b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("UniversityLeaders.Domain.Entities.ProfilePhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(127)
+                        .HasColumnType("character varying(127)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_profile_photos");
+
+                    b.ToTable("profile_photos", (string)null);
                 });
 
             modelBuilder.Entity("UniversityLeaders.Domain.Entities.Report", b =>
@@ -579,6 +612,21 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("Phone")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone");
+
+                    b.Property<bool>("PhoneIsPublic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("phone_is_public");
+
+                    b.Property<Guid?>("PhotoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_id");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -604,6 +652,11 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_users");
+
+                    b.HasIndex("PhotoId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_photo_id")
+                        .HasFilter("photo_id IS NOT NULL");
 
                     b.HasIndex("UserName")
                         .IsUnique()
@@ -803,9 +856,17 @@ namespace UniversityLeaders.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_users_faculties_faculty_id");
 
+                    b.HasOne("UniversityLeaders.Domain.Entities.ProfilePhoto", "Photo")
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_users_profile_photos_photo_id");
+
                     b.Navigation("Direction");
 
                     b.Navigation("Faculty");
+
+                    b.Navigation("Photo");
                 });
 
             modelBuilder.Entity("UniversityLeaders.Domain.Entities.Announcement", b =>

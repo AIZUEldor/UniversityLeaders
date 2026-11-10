@@ -22,6 +22,7 @@ public sealed class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<AnnouncementRecipient> AnnouncementRecipients => Set<AnnouncementRecipient>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ProfilePhoto> ProfilePhotos => Set<ProfilePhoto>();
 
     /// <summary>ASP.NET Core Data Protection key ring (cookie and antiforgery keys). Secret material: never exposed by any API.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();

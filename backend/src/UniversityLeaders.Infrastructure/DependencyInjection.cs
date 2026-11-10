@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IProfilePhotoRepository, ProfilePhotoRepository>();
 
         services.AddScoped<IAttachmentStorage, PostgresAttachmentStorage>(); // file bytes in PostgreSQL (attachment_contents)
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();

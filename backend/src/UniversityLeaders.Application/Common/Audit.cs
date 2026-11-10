@@ -12,6 +12,8 @@ public static class AuditActions
     public const string UserPasswordReset = "user.password_reset";
     public const string UserPasswordRecovered = "user.password_recovered";
     public const string AuthLoginSucceeded = "auth.login_succeeded";
+    public const string UserPhotoChanged = "user.photo_changed";
+    public const string UserPhotoRemoved = "user.photo_removed";
     public const string AuthLockedOut = "auth.locked_out";
     public const string AuthLogout = "auth.logout";
     public const string AuthPasswordChanged = "auth.password_changed";

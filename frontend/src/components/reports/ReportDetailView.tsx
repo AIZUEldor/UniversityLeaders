@@ -41,10 +41,8 @@ export function ReportDetailView({ id, mode, backHref }: { id: string; mode: "au
   const summary = detail.summary;
   const isOwn = state.status === "authenticated" && state.user.id === summary.authorId;
   const editable = isOwn && (summary.status === "Draft" || summary.status === "Rejected");
-  const canReview = state.status === "authenticated" && (
-    (state.user.role === "university_leader" && (summary.authorRole === "FacultyLeader" || summary.authorRole === "UniversityCoordinator"))
-    || (state.user.role === "faculty_leader" && summary.authorRole === "FacultyCoordinator" && state.user.facultyId === summary.facultyId)
-  );
+  // Only the University Leader reviews (the API enforces it); older coordinator reports stay reviewable as history.
+  const canReview = state.status === "authenticated" && state.user.role === "university_leader";
   const save = (content: ReportContent, submit: boolean): Promise<void> => run(async () => {
     const updated = await reportsApi.update(id, content, summary.version);
     if (!submit) return updated;

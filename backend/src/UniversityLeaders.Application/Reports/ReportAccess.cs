@@ -4,13 +4,16 @@ using UniversityLeaders.Domain.Enums;
 namespace UniversityLeaders.Application.Reports;
 
 /// <summary>
-/// Who may see a report (and therefore its attachments). Routing: faculty coordinator → own faculty leader;
-/// faculty leader and university coordinator → University Leader. Requires <see cref="Report.Author"/> to be loaded.
+/// Who may see a report (and therefore its attachments). Faculty leaders author reports; the University Leader reviews
+/// them (and any older coordinator reports). Requires <see cref="Report.Author"/> to be loaded.
 /// </summary>
 internal static class ReportAccess
 {
-    public static readonly UserRole[] UniversityLeaderReviews = { UserRole.FacultyLeader, UserRole.UniversityCoordinator };
-    public static readonly UserRole[] FacultyLeaderReviews = { UserRole.FacultyCoordinator };
+    /// <summary>
+    /// The University Leader reviews every report. Coordinator-authored reports exist only from before the final hierarchy
+    /// (university coordinators retired, faculty coordinators became profiles); they stay reviewable and readable as history.
+    /// </summary>
+    public static readonly UserRole[] UniversityLeaderReviews = { UserRole.FacultyLeader, UserRole.UniversityCoordinator, UserRole.FacultyCoordinator };
 
     /// <summary>The author sees everything; responsible reviewers see non-draft reports of the authors they review.</summary>
     public static bool CanView(User actor, Report report)
@@ -23,7 +26,6 @@ internal static class ReportAccess
         return actor.Role switch
         {
             UserRole.UniversityLeader => UniversityLeaderReviews.Contains(report.Author.Role),
-            UserRole.FacultyLeader => report.Author.Role == UserRole.FacultyCoordinator && actor.FacultyId is not null && report.FacultyId == actor.FacultyId,
             _ => false,
         };
     }

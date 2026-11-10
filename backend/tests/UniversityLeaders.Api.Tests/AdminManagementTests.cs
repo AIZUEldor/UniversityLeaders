@@ -113,16 +113,9 @@ public sealed class AdminManagementTests : IAsyncLifetime
         HttpResponseMessage secondLeader = await admin.PostAsync("/api/admin/faculty-leaders", new { userName = "fl.tarix2", fullName = "Second", facultyId }, csrf);
         Assert.Equal("faculty_leader_exists", await ManagementSteps.AssertStatusAsync(secondLeader, HttpStatusCode.Conflict));
 
-        HttpResponseMessage sameNameOtherCase = await admin.PostAsync("/api/admin/university-coordinators", new { userName = "FL.Tarix", fullName = "X", directionId = 1 }, csrf);
+        HttpResponseMessage sameNameOtherCase = await admin.PostAsync("/api/admin/faculty-leaders", new { userName = "FL.Tarix", fullName = "X", facultyId }, csrf);
         Assert.Equal("username_taken", await ManagementSteps.AssertStatusAsync(sameNameOtherCase, HttpStatusCode.Conflict));
 
-        HttpResponseMessage coordinator = await admin.PostAsync("/api/admin/university-coordinators", new { userName = "uc.yoshlar", fullName = "UC One", directionId = 1 }, csrf);
-        Assert.Equal(HttpStatusCode.Created, coordinator.StatusCode);
-        HttpResponseMessage secondCoordinator = await admin.PostAsync("/api/admin/university-coordinators", new { userName = "uc.yoshlar2", fullName = "UC Two", directionId = 1 }, csrf);
-        Assert.Equal("direction_coordinator_exists", await ManagementSteps.AssertStatusAsync(secondCoordinator, HttpStatusCode.Conflict));
-
-        HttpResponseMessage badDirection = await admin.PostAsync("/api/admin/university-coordinators", new { userName = "uc.bad", fullName = "Bad", directionId = 8 }, csrf);
-        Assert.Equal("validation_failed", await ManagementSteps.AssertStatusAsync(badDirection, HttpStatusCode.BadRequest));
         HttpResponseMessage badFaculty = await admin.PostAsync("/api/admin/faculty-leaders", new { userName = "fl.none", fullName = "None", facultyId = 999 }, csrf);
         Assert.Equal("validation_failed", await ManagementSteps.AssertStatusAsync(badFaculty, HttpStatusCode.BadRequest));
         HttpResponseMessage badUserName = await admin.PostAsync("/api/admin/faculty-leaders", new { userName = "bad name!", fullName = "", facultyId }, csrf);
@@ -194,7 +187,7 @@ public sealed class AdminManagementTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Faculty_rename_and_university_coordinator_changes_persist_without_revealing_the_password()
+    public async Task Faculty_rename_persists_and_university_coordinators_cannot_be_managed()
     {
         (HttpClient admin, string csrf) = await _factory.SignInUniversityLeaderAsync();
 
@@ -203,40 +196,16 @@ public sealed class AdminManagementTests : IAsyncLifetime
         JsonElement faculty = await createdFaculty.Content.ReadFromJsonAsync<JsonElement>();
         int facultyId = faculty.GetProperty("id").GetInt32();
         HttpResponseMessage renamedFaculty = await admin.SendJsonAsync(HttpMethod.Put, $"/api/admin/faculties/{facultyId}",
-            new { name = "Renamed Test Faculty", version = faculty.GetProperty("version").GetUInt32() }, csrf);
+            new { name = "Renamed Test Faculty", description = "  Programmes of the faculty.  ", version = faculty.GetProperty("version").GetUInt32() }, csrf);
         Assert.Equal(HttpStatusCode.OK, renamedFaculty.StatusCode);
         JsonElement faculties = await admin.GetFromJsonAsync<JsonElement>("/api/admin/faculties");
-        Assert.Equal("Renamed Test Faculty", Assert.Single(faculties.EnumerateArray()).GetProperty("name").GetString());
+        JsonElement renamed = Assert.Single(faculties.EnumerateArray());
+        Assert.Equal("Renamed Test Faculty", renamed.GetProperty("name").GetString());
+        Assert.Equal("Programmes of the faculty.", renamed.GetProperty("description").GetString()); // trimmed
 
-        HttpResponseMessage created = await admin.PostAsync("/api/admin/university-coordinators",
-            new { userName = "uc.verification", fullName = "Original Coordinator", directionId = 1 }, csrf);
-        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        Assert.True(created.Headers.CacheControl?.NoStore);
-        JsonElement provisioned = await created.Content.ReadFromJsonAsync<JsonElement>();
-        string temporaryPassword = provisioned.GetProperty("temporaryPassword").GetString()!;
-        JsonElement user = provisioned.GetProperty("user");
-        string id = user.GetProperty("id").GetString()!;
-
-        HttpResponseMessage edited = await admin.SendJsonAsync(HttpMethod.Put, $"/api/admin/university-coordinators/{id}",
-            new { fullName = "Renamed Coordinator", directionId = 2, version = user.GetProperty("version").GetUInt32() }, csrf);
-        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
-        JsonElement detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/university-coordinators/{id}");
-        Assert.Equal("Renamed Coordinator", detail.GetProperty("fullName").GetString());
-        Assert.Equal(2, detail.GetProperty("directionId").GetInt32());
-
-        string list = await admin.GetStringAsync("/api/admin/university-coordinators");
-        Assert.DoesNotContain("temporaryPassword", list);
-        Assert.DoesNotContain(temporaryPassword, list);
-        Assert.DoesNotContain("temporaryPassword", detail.GetRawText());
-        Assert.DoesNotContain(temporaryPassword, detail.GetRawText());
-
-        HttpResponseMessage deactivated = await admin.PostAsync($"/api/admin/university-coordinators/{id}/deactivate",
-            new { version = detail.GetProperty("version").GetUInt32() }, csrf);
-        Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
-        JsonElement inactive = await admin.GetFromJsonAsync<JsonElement>("/api/admin/university-coordinators?includeInactive=true");
-        Assert.False(Assert.Single(inactive.EnumerateArray()).GetProperty("isActive").GetBoolean());
-        JsonElement active = await admin.GetFromJsonAsync<JsonElement>("/api/admin/university-coordinators");
-        Assert.Empty(active.EnumerateArray());
+        // University coordinators are retired: there is no management API for them any more.
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/admin/university-coordinators")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsync("/api/admin/university-coordinators", new { fullName = "X", directionId = 1 }, csrf)).StatusCode);
     }
 
     private async Task<(HttpClient Client, string Csrf)> SignInAdminWithChangedPasswordAsync(HttpClient pendingLeader)

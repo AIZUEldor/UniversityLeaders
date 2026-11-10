@@ -1,21 +1,25 @@
 import { apiRequest } from "./api";
 
+/** One of the 7 directions; null name means "Koordinator tayinlanmagan". The phone is present only with consent. */
 export interface PublicDirectionSlot {
   directionId: number;
   directionName: string;
   coordinatorName: string | null;
+  photoId: string | null;
+  phone: string | null;
 }
 
 export interface PublicFaculty {
   id: number;
   name: string;
+  description: string | null;
   leaderName: string | null;
+  leaderPhotoId: string | null;
   coordinators: PublicDirectionSlot[];
 }
 
 export interface PublicDirectory {
   universityLeaderName: string | null;
-  universityCoordinators: PublicDirectionSlot[];
   faculties: PublicFaculty[];
 }
 

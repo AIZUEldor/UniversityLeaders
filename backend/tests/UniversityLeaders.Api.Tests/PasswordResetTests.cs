@@ -20,13 +20,12 @@ public sealed class PasswordResetTests : IAsyncLifetime
     public Task DisposeAsync() => ((IAsyncLifetime)_factory).DisposeAsync();
 
     [Fact]
-    public async Task University_leader_resets_faculty_leaders_and_university_coordinators_with_revocation_and_audit()
+    public async Task University_leader_resets_faculty_leaders_with_revocation_and_audit()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
         string leaderUrl = $"/api/admin/faculty-leaders/{c.LeaderA.Id}";
 
         Assert.Equal(HttpStatusCode.Forbidden, (await Reset(c.LeaderB, $"{leaderUrl}/reset-password", 0)).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Reset(c.CoordinatorA1, $"{leaderUrl}/reset-password", 0)).StatusCode);
         Assert.Equal("concurrent_update", await ManagementSteps.AssertStatusAsync(
             await Reset(c.Admin, $"{leaderUrl}/reset-password", await VersionAsync(c.Admin, leaderUrl) + 1), HttpStatusCode.Conflict));
 
@@ -34,24 +33,36 @@ public sealed class PasswordResetTests : IAsyncLifetime
         Assert.DoesNotContain(temporary, await AuditDetailsAsync(AuditActions.UserPasswordReset, c.LeaderA.Id));
         Assert.Equal(c.Admin.Id, (await AuditAsync(AuditActions.UserPasswordReset, c.LeaderA.Id)).ActorId);
 
-        await AssertResetAsync(c.Admin, $"/api/admin/university-coordinators/{c.UniversityCoordinator.Id}", "uc.three", c.UniversityCoordinator);
+        string leaderB = $"/api/admin/faculty-leaders/{c.LeaderB.Id}";
+        Assert.Equal(HttpStatusCode.OK, (await c.Admin.Client.PostAsync($"{leaderB}/deactivate", new { version = await VersionAsync(c.Admin, leaderB) }, c.Admin.Csrf)).StatusCode);
+        Assert.Equal("user_inactive", await ManagementSteps.AssertStatusAsync(
+            await Reset(c.Admin, $"{leaderB}/reset-password", await VersionAsync(c.Admin, leaderB)), HttpStatusCode.Conflict));
     }
 
     [Fact]
-    public async Task Faculty_leaders_reset_only_active_coordinators_of_their_own_faculty()
+    public async Task Coordinators_are_profiles_without_credentials_login_or_password_reset()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
 
-        await AssertResetAsync(c.LeaderA, $"/api/faculty/coordinators/{c.CoordinatorA1.Id}", "fc.a1", c.CoordinatorA1);
-        Assert.Equal("user_not_found", await ManagementSteps.AssertStatusAsync(
-            await Reset(c.LeaderA, $"/api/faculty/coordinators/{c.CoordinatorB1.Id}/reset-password", 0), HttpStatusCode.NotFound));
-        Assert.Equal(HttpStatusCode.Forbidden, (await Reset(c.LeaderA, $"/api/admin/faculty-leaders/{c.LeaderB.Id}/reset-password", 0)).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Reset(c.CoordinatorA2, $"/api/faculty/coordinators/{c.CoordinatorA1.Id}/reset-password", 0)).StatusCode);
+        User profile = await _factory.WithDbAsync((AppDbContext db) => db.Users.AsNoTracking().SingleAsync((User u) => u.Id == c.CoordinatorA1));
+        Assert.Null(profile.PasswordHash);
+        Assert.False(profile.MustChangePassword);
+        Assert.StartsWith("profile-", profile.UserName);
 
-        string a2 = $"/api/faculty/coordinators/{c.CoordinatorA2.Id}";
-        Assert.Equal(HttpStatusCode.OK, (await c.LeaderA.Client.PostAsync($"{a2}/deactivate", new { version = await VersionAsync(c.LeaderA, a2) }, c.LeaderA.Csrf)).StatusCode);
-        Assert.Equal("user_inactive", await ManagementSteps.AssertStatusAsync(
-            await Reset(c.LeaderA, $"{a2}/reset-password", await VersionAsync(c.LeaderA, a2)), HttpStatusCode.Conflict));
+        // No route resets a coordinator, and the internal user name never signs in.
+        Assert.True((await Reset(c.LeaderA, $"/api/faculty/coordinators/{c.CoordinatorA1}/reset-password", 0)).StatusCode
+            is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateApiClient().LoginAsync(profile.UserName, "Any-Password-123!")).Response.StatusCode);
+
+        // A coordinator row that still carries a password from before the change cannot sign in either.
+        const string legacyPassword = "Legacy-Coordinator-Pass-1!";
+        await _factory.WithDbAsync(async (AppDbContext db) =>
+        {
+            string hash = new Microsoft.AspNetCore.Identity.PasswordHasher<object>().HashPassword(new object(), legacyPassword);
+            return await db.Users.Where((User u) => u.Id == c.CoordinatorA1)
+                .ExecuteUpdateAsync(set => set.SetProperty((User u) => u.PasswordHash, hash).SetProperty((User u) => u.MustChangePassword, false));
+        });
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateApiClient().LoginAsync(profile.UserName, legacyPassword)).Response.StatusCode);
     }
 
     [Fact]

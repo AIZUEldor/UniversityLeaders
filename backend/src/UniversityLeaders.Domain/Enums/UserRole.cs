@@ -5,6 +5,7 @@ public enum UserRole
 {
     UniversityLeader = 1,
     FacultyLeader = 2,
+    /// <summary>Historical only: university coordinators were retired. Kept so existing rows, reports and audit stay valid.</summary>
     UniversityCoordinator = 3,
     FacultyCoordinator = 4,
 }

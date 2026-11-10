@@ -20,9 +20,7 @@ public interface IUserManagementService
 
     Task<ManagedUserResponse> UpdateFacultyLeaderAsync(Guid actorId, Guid id, UpdateFacultyLeaderRequest request, CancellationToken cancellationToken);
 
-    Task<ProvisionedUserResponse> CreateUniversityCoordinatorAsync(Guid actorId, CreateUniversityCoordinatorRequest request, CancellationToken cancellationToken);
 
-    Task<ManagedUserResponse> UpdateUniversityCoordinatorAsync(Guid actorId, Guid id, UpdateUniversityCoordinatorRequest request, CancellationToken cancellationToken);
 
     /// <summary>Soft deactivation: the account keeps its id, reports and audit history but can no longer log in; open sessions end.</summary>
     Task<ManagedUserResponse> DeactivateAsync(Guid actorId, UserRole role, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken);
@@ -32,17 +30,24 @@ public interface IUserManagementService
 
     Task<ManagedUserResponse> GetFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, CancellationToken cancellationToken);
 
-    Task<ProvisionedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken);
+    Task<ManagedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken);
 
     Task<ManagedUserResponse> UpdateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, UpdateFacultyCoordinatorRequest request, CancellationToken cancellationToken);
 
     Task<ManagedUserResponse> DeactivateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken);
 
-    /// <summary>University Leader resets a faculty leader or university coordinator: new temporary password, forced change, sessions revoked.</summary>
+    /// <summary>University Leader resets a faculty leader: new temporary password, forced change, sessions revoked.</summary>
     Task<ProvisionedUserResponse> ResetPasswordAsync(Guid actorId, UserRole role, Guid id, ResetPasswordRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Faculty leader resets a coordinator of their own faculty (other faculties: 404).</summary>
-    Task<ProvisionedUserResponse> ResetFacultyCoordinatorPasswordAsync(Guid facultyLeaderId, Guid id, ResetPasswordRequest request, CancellationToken cancellationToken);
+    /// <summary>University Leader sets or removes the public photo of a faculty leader.</summary>
+    Task<ManagedUserResponse> SetPhotoAsync(Guid actorId, UserRole role, Guid id, Attachments.AttachmentUpload upload, CancellationToken cancellationToken);
+
+    Task<ManagedUserResponse> RemovePhotoAsync(Guid actorId, UserRole role, Guid id, CancellationToken cancellationToken);
+
+    /// <summary>Faculty leader sets or removes the photo of a coordinator of their own faculty (other faculties: 404).</summary>
+    Task<ManagedUserResponse> SetFacultyCoordinatorPhotoAsync(Guid facultyLeaderId, Guid id, Attachments.AttachmentUpload upload, CancellationToken cancellationToken);
+
+    Task<ManagedUserResponse> RemoveFacultyCoordinatorPhotoAsync(Guid facultyLeaderId, Guid id, CancellationToken cancellationToken);
 
     /// <summary>Offline recovery for the University Leader; only reachable from the server-side CLI command, never over HTTP.</summary>
     Task<ProvisionedUserResponse> RecoverUniversityLeaderAsync(string? userName, CancellationToken cancellationToken);
@@ -61,6 +66,7 @@ internal sealed class UserManagementService : IUserManagementService
     private readonly IAuditLogRepository _audit;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _hasher;
+    private readonly IProfilePhotoRepository _photos;
     private readonly TimeProvider _time;
 
     public UserManagementService(
@@ -70,8 +76,10 @@ internal sealed class UserManagementService : IUserManagementService
         IAuditLogRepository audit,
         IUnitOfWork unitOfWork,
         IPasswordHasher hasher,
+        IProfilePhotoRepository photos,
         TimeProvider time)
     {
+        _photos = photos;
         _users = users;
         _faculties = faculties;
         _directions = directions;
@@ -93,25 +101,18 @@ internal sealed class UserManagementService : IUserManagementService
         return ToResponse(await GetManagedAsync(role, id, null, cancellationToken));
     }
 
-    public Task<ProvisionedUserResponse> CreateFacultyLeaderAsync(Guid actorId, CreateFacultyLeaderRequest request, CancellationToken cancellationToken)
+    public async Task<ProvisionedUserResponse> CreateFacultyLeaderAsync(Guid actorId, CreateFacultyLeaderRequest request, CancellationToken cancellationToken)
     {
-        return ProvisionAsync(actorId, UserRole.FacultyLeader, request.UserName, request.FullName, request.FacultyId, null, cancellationToken);
+        (User user, string? temporaryPassword) = await ProvisionAsync(actorId, UserRole.FacultyLeader, request.UserName, request.FullName, request.FacultyId, null, null, cancellationToken);
+        return new ProvisionedUserResponse(ToResponse(user), temporaryPassword!); // a login role always gets one
     }
 
-    public Task<ProvisionedUserResponse> CreateUniversityCoordinatorAsync(Guid actorId, CreateUniversityCoordinatorRequest request, CancellationToken cancellationToken)
-    {
-        return ProvisionAsync(actorId, UserRole.UniversityCoordinator, request.UserName, request.FullName, null, request.DirectionId, cancellationToken);
-    }
 
     public Task<ManagedUserResponse> UpdateFacultyLeaderAsync(Guid actorId, Guid id, UpdateFacultyLeaderRequest request, CancellationToken cancellationToken)
     {
-        return UpdateAsync(actorId, UserRole.FacultyLeader, id, request.FullName, request.FacultyId, null, request.Version, null, cancellationToken);
+        return UpdateAsync(actorId, UserRole.FacultyLeader, id, request.FullName, request.FacultyId, null, null, request.Version, null, cancellationToken);
     }
 
-    public Task<ManagedUserResponse> UpdateUniversityCoordinatorAsync(Guid actorId, Guid id, UpdateUniversityCoordinatorRequest request, CancellationToken cancellationToken)
-    {
-        return UpdateAsync(actorId, UserRole.UniversityCoordinator, id, request.FullName, null, request.DirectionId, request.Version, null, cancellationToken);
-    }
 
     public Task<ManagedUserResponse> DeactivateAsync(Guid actorId, UserRole role, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken)
     {
@@ -131,16 +132,16 @@ internal sealed class UserManagementService : IUserManagementService
         return ToResponse(await GetManagedAsync(UserRole.FacultyCoordinator, id, facultyId, cancellationToken));
     }
 
-    public async Task<ProvisionedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
+    public async Task<ManagedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
     {
         int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
-        return await ProvisionAsync(facultyLeaderId, UserRole.FacultyCoordinator, request.UserName, request.FullName, facultyId, request.DirectionId, cancellationToken);
+        return ToResponse((await ProvisionAsync(facultyLeaderId, UserRole.FacultyCoordinator, null, request.FullName, facultyId, request.DirectionId, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), cancellationToken)).User);
     }
 
     public async Task<ManagedUserResponse> UpdateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, UpdateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
     {
         int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
-        return await UpdateAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, request.FullName, facultyId, request.DirectionId, request.Version, facultyId, cancellationToken);
+        return await UpdateAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, request.FullName, facultyId, request.DirectionId, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), request.Version, facultyId, cancellationToken);
     }
 
     public async Task<ManagedUserResponse> DeactivateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken)
@@ -154,10 +155,26 @@ internal sealed class UserManagementService : IUserManagementService
         return ResetManagedAsync(actorId, role, id, request, null, cancellationToken);
     }
 
-    public async Task<ProvisionedUserResponse> ResetFacultyCoordinatorPasswordAsync(Guid facultyLeaderId, Guid id, ResetPasswordRequest request, CancellationToken cancellationToken)
+    public Task<ManagedUserResponse> SetPhotoAsync(Guid actorId, UserRole role, Guid id, Attachments.AttachmentUpload upload, CancellationToken cancellationToken)
+    {
+        return SetPhotoCoreAsync(actorId, role, id, upload, null, cancellationToken);
+    }
+
+    public Task<ManagedUserResponse> RemovePhotoAsync(Guid actorId, UserRole role, Guid id, CancellationToken cancellationToken)
+    {
+        return RemovePhotoCoreAsync(actorId, role, id, null, cancellationToken);
+    }
+
+    public async Task<ManagedUserResponse> SetFacultyCoordinatorPhotoAsync(Guid facultyLeaderId, Guid id, Attachments.AttachmentUpload upload, CancellationToken cancellationToken)
     {
         int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
-        return await ResetManagedAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, request, facultyId, cancellationToken);
+        return await SetPhotoCoreAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, upload, facultyId, cancellationToken);
+    }
+
+    public async Task<ManagedUserResponse> RemoveFacultyCoordinatorPhotoAsync(Guid facultyLeaderId, Guid id, CancellationToken cancellationToken)
+    {
+        int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
+        return await RemovePhotoCoreAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, facultyId, cancellationToken);
     }
 
     public async Task<ProvisionedUserResponse> RecoverUniversityLeaderAsync(string? userName, CancellationToken cancellationToken)
@@ -184,6 +201,11 @@ internal sealed class UserManagementService : IUserManagementService
         if (!user.IsActive)
         {
             throw new ConflictException("user_inactive", "Deactivated accounts cannot be reset.");
+        }
+
+        if (!UserRoles.HasLogin(user.Role))
+        {
+            throw new ConflictException("no_login", "Coordinators are profiles without a login; there is no password to reset.");
         }
 
         return await IssueTemporaryPasswordAsync(actorId, user, AuditActions.UserPasswordReset, cancellationToken);
@@ -231,11 +253,17 @@ internal sealed class UserManagementService : IUserManagementService
         return ToResponse(user);
     }
 
-    private async Task<ProvisionedUserResponse> ProvisionAsync(
-        Guid actorId, UserRole role, string? rawUserName, string? rawFullName, int? facultyId, int? directionId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Login roles get the chosen user name and a one-time temporary password. Coordinator profiles get an internal user
+    /// name (never used to sign in), no password hash and no forced password change.
+    /// </summary>
+    private async Task<(User User, string? TemporaryPassword)> ProvisionAsync(
+        Guid actorId, UserRole role, string? rawUserName, string? rawFullName, int? facultyId, int? directionId, ProfileContact? contact, CancellationToken cancellationToken)
     {
+        bool hasLogin = UserRoles.HasLogin(role);
         Dictionary<string, string[]> errors = new Dictionary<string, string[]>();
-        string userName = InputRules.UserName(rawUserName, errors);
+        string userName = hasLogin ? InputRules.UserName(rawUserName, errors) : $"profile-{Guid.NewGuid():N}";
+        string? phone = InputRules.Phone(contact?.Phone, errors);
         string fullName = InputRules.RequiredText(rawFullName, InputRules.MaxFullNameLength, "fullName", errors);
         await ValidateSeatAsync(role, facultyId, directionId, errors, cancellationToken);
         InputRules.ThrowIfInvalid(errors);
@@ -247,7 +275,7 @@ internal sealed class UserManagementService : IUserManagementService
 
         await EnsureSeatFreeAsync(role, facultyId, directionId, null, cancellationToken);
 
-        string temporaryPassword = GenerateTemporaryPassword(userName);
+        string? temporaryPassword = hasLogin ? GenerateTemporaryPassword(userName) : null;
         DateTimeOffset now = _time.GetUtcNow();
         User user = new User
         {
@@ -257,8 +285,10 @@ internal sealed class UserManagementService : IUserManagementService
             Role = role,
             FacultyId = facultyId,
             DirectionId = directionId,
-            PasswordHash = _hasher.Hash(temporaryPassword), // only the hash is stored
-            MustChangePassword = true,
+            PasswordHash = temporaryPassword is null ? null : _hasher.Hash(temporaryPassword), // only the hash is stored
+            MustChangePassword = hasLogin,
+            Phone = phone,
+            PhoneIsPublic = phone is not null && (contact?.PhoneIsPublic ?? false),
             SecurityStamp = InputRules.NewSecurityStamp(),
             IsActive = true,
             CreatedAt = now,
@@ -269,14 +299,105 @@ internal sealed class UserManagementService : IUserManagementService
 
         // Races on the user name or seat are caught by the unique indexes and surface as 409 with a specific code.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return new ProvisionedUserResponse(ToResponse(user), temporaryPassword);
+        return (user, temporaryPassword);
     }
 
+    private async Task<ManagedUserResponse> SetPhotoCoreAsync(
+        Guid actorId, UserRole role, Guid id, Attachments.AttachmentUpload upload, int? scopeFacultyId, CancellationToken cancellationToken)
+    {
+        User user = await GetActiveManagedAsync(role, id, scopeFacultyId, cancellationToken);
+        (byte[] bytes, string contentType) = await ReadPhotoAsync(upload, cancellationToken);
+
+        DateTimeOffset now = _time.GetUtcNow();
+        ProfilePhoto photo = new ProfilePhoto { Id = Guid.CreateVersion7(), Content = bytes, ContentType = contentType, CreatedAt = now };
+        ProfilePhoto? previous = user.PhotoId is Guid oldId ? await _photos.FindAsync(oldId, cancellationToken) : null;
+        _photos.Add(photo);
+        user.PhotoId = photo.Id; // a new id per upload, so public URLs never need cache invalidation
+        if (previous is not null)
+        {
+            _photos.Remove(previous);
+        }
+
+        _audit.Add(Audit.Entry(actorId, AuditActions.UserPhotoChanged, nameof(User), user.Id.ToString(),
+            new { Role = user.Role.ToString(), SizeBytes = bytes.LongLength, ContentType = contentType }, now));
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ToResponse(user);
+    }
+
+    private async Task<ManagedUserResponse> RemovePhotoCoreAsync(Guid actorId, UserRole role, Guid id, int? scopeFacultyId, CancellationToken cancellationToken)
+    {
+        User user = await GetActiveManagedAsync(role, id, scopeFacultyId, cancellationToken);
+        if (user.PhotoId is not Guid photoId)
+        {
+            return ToResponse(user);
+        }
+
+        ProfilePhoto? photo = await _photos.FindAsync(photoId, cancellationToken);
+        user.PhotoId = null;
+        if (photo is not null)
+        {
+            _photos.Remove(photo);
+        }
+
+        _audit.Add(Audit.Entry(actorId, AuditActions.UserPhotoRemoved, nameof(User), user.Id.ToString(), new { Role = user.Role.ToString() }, _time.GetUtcNow()));
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ToResponse(user);
+    }
+
+    private async Task<User> GetActiveManagedAsync(UserRole role, Guid id, int? scopeFacultyId, CancellationToken cancellationToken)
+    {
+        User user = await GetManagedAsync(role, id, scopeFacultyId, cancellationToken);
+        if (!user.IsActive)
+        {
+            throw new ConflictException("user_inactive", "Deactivated profiles cannot be edited.");
+        }
+
+        return user;
+    }
+
+    /// <summary>Bounded read; the type comes from the bytes (JPEG or PNG only), never from the client's claim.</summary>
+    private static async Task<(byte[] Bytes, string ContentType)> ReadPhotoAsync(Attachments.AttachmentUpload upload, CancellationToken cancellationToken)
+    {
+        Dictionary<string, string[]> errors = new Dictionary<string, string[]>();
+        string sizeError = $"Photos must be between 1 byte and {ProfilePhotoRules.MaxBytes / 1024} KB.";
+        if (upload.Length <= 0 || upload.Length > ProfilePhotoRules.MaxBytes)
+        {
+            errors["file"] = new[] { sizeError };
+            InputRules.ThrowIfInvalid(errors);
+        }
+
+        using MemoryStream buffer = new MemoryStream();
+        byte[] chunk = new byte[81920];
+        int read;
+        while ((read = await upload.Content.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            buffer.Write(chunk, 0, read);
+            if (buffer.Length > ProfilePhotoRules.MaxBytes)
+            {
+                errors["file"] = new[] { sizeError };
+                InputRules.ThrowIfInvalid(errors);
+            }
+        }
+
+        byte[] bytes = buffer.ToArray();
+        Attachments.AttachmentKind? kind = Attachments.AttachmentInspector.Detect(bytes);
+        if (bytes.Length == 0 || kind is not (Attachments.AttachmentKind.Jpeg or Attachments.AttachmentKind.Png))
+        {
+            errors["file"] = new[] { "Only JPEG or PNG photos are accepted." };
+            InputRules.ThrowIfInvalid(errors);
+        }
+
+        return (bytes, Attachments.AttachmentInspector.ContentType(kind!.Value)); // checked just above
+    }
+
+    /// <param name="contact">Null keeps the stored contact (faculty leaders); coordinators always send their contact.</param>
     private async Task<ManagedUserResponse> UpdateAsync(
-        Guid actorId, UserRole role, Guid id, string? rawFullName, int? facultyId, int? directionId, uint? rawVersion, int? scopeFacultyId, CancellationToken cancellationToken)
+        Guid actorId, UserRole role, Guid id, string? rawFullName, int? facultyId, int? directionId, ProfileContact? contact, uint? rawVersion,
+        int? scopeFacultyId, CancellationToken cancellationToken)
     {
         Dictionary<string, string[]> errors = new Dictionary<string, string[]>();
         string fullName = InputRules.RequiredText(rawFullName, InputRules.MaxFullNameLength, "fullName", errors);
+        string? phone = contact is null ? null : InputRules.Phone(contact.Phone, errors);
         uint version = InputRules.Version(rawVersion, errors);
         await ValidateSeatAsync(role, facultyId, directionId, errors, cancellationToken);
         InputRules.ThrowIfInvalid(errors);
@@ -289,7 +410,10 @@ internal sealed class UserManagementService : IUserManagementService
         }
 
         bool seatChanged = user.FacultyId != facultyId || user.DirectionId != directionId;
-        if (!seatChanged && user.FullName == fullName)
+        string? newPhone = contact is null ? user.Phone : phone;
+        bool newPhoneIsPublic = contact is null ? user.PhoneIsPublic : newPhone is not null && contact.PhoneIsPublic;
+        bool contactChanged = newPhone != user.Phone || newPhoneIsPublic != user.PhoneIsPublic;
+        if (!seatChanged && !contactChanged && user.FullName == fullName)
         {
             return ToResponse(user);
         }
@@ -308,8 +432,11 @@ internal sealed class UserManagementService : IUserManagementService
             ToFacultyId = facultyId,
             FromDirectionId = user.DirectionId,
             ToDirectionId = directionId,
+            ContactChanged = contactChanged,
         }, _time.GetUtcNow()));
         user.FullName = fullName;
+        user.Phone = newPhone;
+        user.PhoneIsPublic = newPhoneIsPublic;
         user.FacultyId = facultyId;
         user.DirectionId = directionId;
 
@@ -326,7 +453,7 @@ internal sealed class UserManagementService : IUserManagementService
                 errors["facultyId"] = new[] { "An existing faculty is required." };
             }
         }
-        else if (role == UserRole.UniversityCoordinator || role == UserRole.FacultyCoordinator)
+        else if (role == UserRole.FacultyCoordinator)
         {
             if (directionId is null || !await _directions.ExistsAsync(directionId.Value, cancellationToken))
             {
@@ -342,8 +469,7 @@ internal sealed class UserManagementService : IUserManagementService
             throw role switch
             {
                 UserRole.FacultyLeader => new ConflictException("faculty_leader_exists", "This faculty already has an active faculty leader."),
-                UserRole.FacultyCoordinator => new ConflictException("coordinator_slot_taken", "This direction already has an active coordinator in your faculty."),
-                _ => new ConflictException("direction_coordinator_exists", "This direction already has an active university coordinator."),
+                _ => new ConflictException("coordinator_slot_taken", "This direction already has an active coordinator in your faculty."),
             };
         }
     }
@@ -364,12 +490,15 @@ internal sealed class UserManagementService : IUserManagementService
         return user;
     }
 
-    /// <summary>Programming guard: faculty coordinators are only ever handled through a faculty scope.</summary>
+    /// <summary>
+    /// Programming guard: the University Leader manages faculty leaders; faculty coordinators are only ever handled through
+    /// a faculty scope. University coordinators no longer exist as a managed role (historical rows are read-only).
+    /// </summary>
     private static void EnsureManageable(UserRole role, bool scoped)
     {
         bool valid = scoped
             ? role == UserRole.FacultyCoordinator
-            : role == UserRole.FacultyLeader || role == UserRole.UniversityCoordinator;
+            : role == UserRole.FacultyLeader;
         if (!valid)
         {
             throw new InvalidOperationException($"Role {role} cannot be managed {(scoped ? "within a faculty" : "by the University Leader")}.");
@@ -405,6 +534,7 @@ internal sealed class UserManagementService : IUserManagementService
     {
         return new ManagedUserResponse(
             user.Id, user.UserName, user.FullName, user.Role, user.FacultyId, user.DirectionId,
-            user.IsActive, user.MustChangePassword, user.CreatedAt, user.DeactivatedAt, user.Version);
+            user.IsActive, user.MustChangePassword, user.CreatedAt, user.DeactivatedAt, user.Version,
+            UserRoles.HasLogin(user.Role), user.PhotoId, user.Phone, user.PhoneIsPublic);
     }
 }

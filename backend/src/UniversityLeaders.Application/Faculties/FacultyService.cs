@@ -23,6 +23,8 @@ internal sealed class FacultyService : IFacultyService
     /// <summary>The university has 13 faculties (one faculty leader each).</summary>
     public const int MaxFaculties = 13;
 
+    private const int MaxDescriptionLength = 500;
+
     private readonly IFacultyRepository _faculties;
     private readonly IAuditLogRepository _audit;
     private readonly IUnitOfWork _unitOfWork;
@@ -51,6 +53,7 @@ internal sealed class FacultyService : IFacultyService
     {
         Dictionary<string, string[]> errors = new Dictionary<string, string[]>();
         string name = InputRules.RequiredText(request.Name, InputRules.MaxFacultyNameLength, "name", errors);
+        string? description = InputRules.OptionalText(request.Description, MaxDescriptionLength, "description", errors);
         InputRules.ThrowIfInvalid(errors);
 
         if (await _faculties.CountAsync(cancellationToken) >= MaxFaculties)
@@ -60,7 +63,7 @@ internal sealed class FacultyService : IFacultyService
 
         await EnsureNameFreeAsync(name, null, cancellationToken);
 
-        Faculty faculty = new Faculty { Name = name };
+        Faculty faculty = new Faculty { Name = name, Description = description };
         await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             _faculties.Add(faculty);
@@ -75,20 +78,26 @@ internal sealed class FacultyService : IFacultyService
     {
         Dictionary<string, string[]> errors = new Dictionary<string, string[]>();
         string name = InputRules.RequiredText(request.Name, InputRules.MaxFacultyNameLength, "name", errors);
+        string? description = InputRules.OptionalText(request.Description, MaxDescriptionLength, "description", errors);
         uint version = InputRules.Version(request.Version, errors);
         InputRules.ThrowIfInvalid(errors);
 
         Faculty faculty = await GetExistingAsync(id, cancellationToken);
         InputRules.EnsureVersion(faculty.Version, version);
-        if (faculty.Name == name)
+        if (faculty.Name == name && faculty.Description == description)
         {
             return ToResponse(faculty);
         }
 
-        await EnsureNameFreeAsync(name, id, cancellationToken);
+        if (faculty.Name != name)
+        {
+            await EnsureNameFreeAsync(name, id, cancellationToken);
+        }
+
         string previous = faculty.Name;
         faculty.Name = name;
-        _audit.Add(Audit.Entry(actorId, AuditActions.FacultyRenamed, nameof(Faculty), id.ToString(), new { From = previous, To = name }, _time.GetUtcNow()));
+        faculty.Description = description;
+        _audit.Add(Audit.Entry(actorId, AuditActions.FacultyRenamed, nameof(Faculty), id.ToString(), new { From = previous, To = name, Description = description }, _time.GetUtcNow()));
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(faculty);
     }
@@ -122,6 +131,6 @@ internal sealed class FacultyService : IFacultyService
 
     private static FacultyResponse ToResponse(Faculty faculty)
     {
-        return new FacultyResponse(faculty.Id, faculty.Name, faculty.Version);
+        return new FacultyResponse(faculty.Id, faculty.Name, faculty.Description, faculty.Version);
     }
 }

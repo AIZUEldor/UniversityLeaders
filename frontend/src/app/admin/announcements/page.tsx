@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type FormEvent } from "react";
 import { inputClass, ManagementMessage, ManagementPanel, Pager, primaryClass, secondaryClass } from "@/components/admin/ManagementUi";
-import { facultiesApi, managedUsersApi } from "@/lib/adminApi";
+import { facultiesApi, facultyLeadersApi } from "@/lib/adminApi";
 import { adminAnnouncementsApi, formatDateTime, type RecipientStatus, type SentAnnouncement } from "@/lib/messagingApi";
 import { usePublicRequest } from "@/lib/usePublicRequest";
 
@@ -11,7 +11,7 @@ export default function AdminAnnouncements() {
   const [openId, setOpenId] = useState<string | null>(null);
   const listRequest = useCallback(() => adminAnnouncementsApi.list(page), [page]);
   const list = usePublicRequest(listRequest);
-  const leadersRequest = useCallback(() => managedUsersApi("faculty-leaders").list(false), []);
+  const leadersRequest = useCallback(() => facultyLeadersApi.list(false), []);
   const leaders = usePublicRequest(leadersRequest);
 
   const onSent = (): void => {

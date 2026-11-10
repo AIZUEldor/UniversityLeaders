@@ -34,7 +34,7 @@ public sealed class AttachmentTests : IAsyncLifetime
     public async Task Accepts_only_real_jpeg_png_pdf_and_docx_and_stores_them_under_random_keys()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
-        string reportId = await CreateDraftAsync(c.CoordinatorA1);
+        string reportId = await CreateDraftAsync(c.LeaderA);
 
         (string Name, byte[] Bytes, string Type)[] valid =
         {
@@ -45,7 +45,7 @@ public sealed class AttachmentTests : IAsyncLifetime
         };
         foreach ((string name, byte[] bytes, string type) in valid)
         {
-            HttpResponseMessage response = await UploadAsync(c.CoordinatorA1, reportId, name, bytes, type);
+            HttpResponseMessage response = await UploadAsync(c.LeaderA, reportId, name, bytes, type);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         }
 
@@ -63,7 +63,7 @@ public sealed class AttachmentTests : IAsyncLifetime
         };
         foreach ((string name, byte[] bytes, string type, string why) in invalid)
         {
-            HttpResponseMessage response = await UploadAsync(c.CoordinatorA1, reportId, name, bytes, type);
+            HttpResponseMessage response = await UploadAsync(c.LeaderA, reportId, name, bytes, type);
             Assert.True(response.StatusCode == HttpStatusCode.BadRequest, $"{why}: expected 400, got {(int)response.StatusCode}");
             Assert.Equal("validation_failed", await response.ErrorCodeAsync());
         }
@@ -86,22 +86,22 @@ public sealed class AttachmentTests : IAsyncLifetime
     public async Task Enforces_ten_megabytes_per_file_and_ten_files_per_report()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
-        string reportId = await CreateDraftAsync(c.CoordinatorA1);
+        string reportId = await CreateDraftAsync(c.LeaderA);
 
         byte[] tooBig = Files.Pdf(padding: (int)AttachmentRules.MaxSizeBytes); // just over 10 MB
-        HttpResponseMessage oversized = await UploadAsync(c.CoordinatorA1, reportId, "big.pdf", tooBig, "application/pdf");
+        HttpResponseMessage oversized = await UploadAsync(c.LeaderA, reportId, "big.pdf", tooBig, "application/pdf");
         Assert.Equal("validation_failed", await ManagementSteps.AssertStatusAsync(oversized, HttpStatusCode.BadRequest));
 
         byte[] wayTooBig = new byte[12 * 1024 * 1024];
-        HttpResponseMessage request413 = await UploadAsync(c.CoordinatorA1, reportId, "huge.png", wayTooBig, "image/png");
+        HttpResponseMessage request413 = await UploadAsync(c.LeaderA, reportId, "huge.png", wayTooBig, "image/png");
         Assert.Equal("payload_too_large", await ManagementSteps.AssertStatusAsync(request413, HttpStatusCode.RequestEntityTooLarge));
 
         for (int i = 1; i <= AttachmentRules.MaxFilesPerReport; i++)
         {
-            Assert.Equal(HttpStatusCode.Created, (await UploadAsync(c.CoordinatorA1, reportId, $"p{i}.png", Files.Png(), "image/png")).StatusCode);
+            Assert.Equal(HttpStatusCode.Created, (await UploadAsync(c.LeaderA, reportId, $"p{i}.png", Files.Png(), "image/png")).StatusCode);
         }
 
-        HttpResponseMessage eleventh = await UploadAsync(c.CoordinatorA1, reportId, "p11.png", Files.Png(), "image/png");
+        HttpResponseMessage eleventh = await UploadAsync(c.LeaderA, reportId, "p11.png", Files.Png(), "image/png");
         Assert.Equal("attachment_limit_reached", await ManagementSteps.AssertStatusAsync(eleventh, HttpStatusCode.Conflict));
         Assert.Equal(AttachmentRules.MaxFilesPerReport, (await _factory.ListStoredKeysAsync()).Count);
     }
@@ -110,14 +110,14 @@ public sealed class AttachmentTests : IAsyncLifetime
     public async Task Uploads_stop_at_the_total_storage_quota_without_storing_anything()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
-        string reportId = await CreateDraftAsync(c.CoordinatorA1);
-        await UploadOkAsync(c.CoordinatorA1, reportId, "first.pdf", Files.Pdf());
+        string reportId = await CreateDraftAsync(c.LeaderA);
+        await UploadOkAsync(c.LeaderA, reportId, "first.pdf", Files.Pdf());
         // Pretend the stored files already fill the quota (only the recorded size counts, so no large upload is needed).
         await _factory.WithDbAsync((Infrastructure.Persistence.AppDbContext db) => db.ReportAttachments
             .ExecuteUpdateAsync(set =>
                 set.SetProperty((ReportAttachment a) => a.SizeBytes, AttachmentRules.MaxTotalBytes)));
 
-        HttpResponseMessage full = await UploadAsync(c.CoordinatorA1, reportId, "second.png", Files.Png(), "image/png");
+        HttpResponseMessage full = await UploadAsync(c.LeaderA, reportId, "second.png", Files.Png(), "image/png");
         Assert.Equal("storage_quota_reached", await ManagementSteps.AssertStatusAsync(full, HttpStatusCode.Conflict));
         Assert.Single(await _factory.ListStoredKeysAsync());
     }
@@ -126,20 +126,20 @@ public sealed class AttachmentTests : IAsyncLifetime
     public async Task Only_the_author_changes_files_and_only_author_and_responsible_reviewer_can_read_them()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
-        string reportId = await CreateDraftAsync(c.CoordinatorA1);
+        string reportId = await CreateDraftAsync(c.LeaderA);
         byte[] pdf = Files.Pdf();
-        string attachmentId = await UploadOkAsync(c.CoordinatorA1, reportId, "evidence.pdf", pdf);
+        string attachmentId = await UploadOkAsync(c.LeaderA, reportId, "evidence.pdf", pdf);
         string download = $"{Reports}/{reportId}/attachments/{attachmentId}";
 
-        // Draft: private to the author.
-        Assert.Equal(HttpStatusCode.NotFound, (await c.LeaderA.Client.GetAsync(download)).StatusCode);
-        await SubmitAsync(c.CoordinatorA1, reportId);
+        // Draft: private to the author (not even the reviewer sees it).
+        Assert.Equal(HttpStatusCode.NotFound, (await c.Admin.Client.GetAsync(download)).StatusCode);
+        await SubmitAsync(c.LeaderA, reportId);
 
         // Responsible reviewer can list and download, with safe headers.
-        JsonElement list = await c.LeaderA.Client.GetFromJsonAsync<JsonElement>($"{Reports}/{reportId}/attachments");
+        JsonElement list = await c.Admin.Client.GetFromJsonAsync<JsonElement>($"{Reports}/{reportId}/attachments");
         Assert.Equal(1, list.GetArrayLength());
         Assert.DoesNotContain("storageKey", list.GetRawText(), StringComparison.OrdinalIgnoreCase);
-        HttpResponseMessage file = await c.LeaderA.Client.GetAsync(download);
+        HttpResponseMessage file = await c.Admin.Client.GetAsync(download);
         Assert.Equal(HttpStatusCode.OK, file.StatusCode);
         Assert.Equal(pdf, await file.Content.ReadAsByteArrayAsync());
         Assert.Equal("attachment", file.Content.Headers.ContentDisposition?.DispositionType);
@@ -150,7 +150,7 @@ public sealed class AttachmentTests : IAsyncLifetime
         Assert.True(file.Headers.CacheControl?.NoStore);
 
         // Everyone else: indistinguishable from a missing report.
-        foreach (Actor outsider in new[] { c.LeaderB, c.CoordinatorA2, c.CoordinatorB1, c.UniversityCoordinator, c.Admin })
+        foreach (Actor outsider in new[] { c.LeaderB })
         {
             HttpResponseMessage denied = await outsider.Client.GetAsync(download);
             Assert.Equal("report_not_found", await ManagementSteps.AssertStatusAsync(denied, HttpStatusCode.NotFound));
@@ -162,41 +162,41 @@ public sealed class AttachmentTests : IAsyncLifetime
         Assert.Equal("report_not_found", await unknown.ErrorCodeAsync());
 
         // The reviewer may read but never change the evidence.
-        Assert.Equal(HttpStatusCode.Forbidden, (await UploadAsync(c.LeaderA, reportId, "extra.png", Files.Png(), "image/png")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await c.LeaderA.Client.SendJsonAsync(HttpMethod.Delete, download, null, c.LeaderA.Csrf)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await UploadAsync(c.CoordinatorA2, reportId, "intruder.png", Files.Png(), "image/png")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await UploadAsync(c.Admin, reportId, "extra.png", Files.Png(), "image/png")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await c.Admin.Client.SendJsonAsync(HttpMethod.Delete, download, null, c.Admin.Csrf)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await UploadAsync(c.LeaderB, reportId, "intruder.png", Files.Png(), "image/png")).StatusCode);
     }
 
     [Fact]
     public async Task Attachments_are_frozen_while_submitted_and_after_approval_but_editable_after_rejection()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
-        string reportId = await CreateDraftAsync(c.CoordinatorA1);
-        string first = await UploadOkAsync(c.CoordinatorA1, reportId, "first.pdf", Files.Pdf());
-        uint version = await SubmitAsync(c.CoordinatorA1, reportId);
+        string reportId = await CreateDraftAsync(c.LeaderA);
+        string first = await UploadOkAsync(c.LeaderA, reportId, "first.pdf", Files.Pdf());
+        uint version = await SubmitAsync(c.LeaderA, reportId);
 
-        Assert.Equal("report_locked", await ManagementSteps.AssertStatusAsync(await UploadAsync(c.CoordinatorA1, reportId, "late.png", Files.Png(), "image/png"), HttpStatusCode.Conflict));
+        Assert.Equal("report_locked", await ManagementSteps.AssertStatusAsync(await UploadAsync(c.LeaderA, reportId, "late.png", Files.Png(), "image/png"), HttpStatusCode.Conflict));
         Assert.Equal("report_locked", await ManagementSteps.AssertStatusAsync(
-            await c.CoordinatorA1.Client.SendJsonAsync(HttpMethod.Delete, $"{Reports}/{reportId}/attachments/{first}", null, c.CoordinatorA1.Csrf), HttpStatusCode.Conflict));
+            await c.LeaderA.Client.SendJsonAsync(HttpMethod.Delete, $"{Reports}/{reportId}/attachments/{first}", null, c.LeaderA.Csrf), HttpStatusCode.Conflict));
 
-        HttpResponseMessage rejected = await c.LeaderA.Client.SendJsonAsync(HttpMethod.Post, $"{Reports}/{reportId}/reject", new { version, comment = "Wrong file." }, c.LeaderA.Csrf);
+        HttpResponseMessage rejected = await c.Admin.Client.SendJsonAsync(HttpMethod.Post, $"{Reports}/{reportId}/reject", new { version, comment = "Wrong file." }, c.Admin.Csrf);
         Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
 
         // Rejected: the author can replace evidence; removal deletes metadata and the stored object.
         string firstKey = await _factory.WithDbAsync((db) => db.ReportAttachments.Where((ReportAttachment a) => a.Id == Guid.Parse(first)).Select((ReportAttachment a) => a.StorageKey).SingleAsync());
-        HttpResponseMessage removed = await c.CoordinatorA1.Client.SendJsonAsync(HttpMethod.Delete, $"{Reports}/{reportId}/attachments/{first}", null, c.CoordinatorA1.Csrf);
+        HttpResponseMessage removed = await c.LeaderA.Client.SendJsonAsync(HttpMethod.Delete, $"{Reports}/{reportId}/attachments/{first}", null, c.LeaderA.Csrf);
         Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
         Assert.DoesNotContain(firstKey, await _factory.ListStoredKeysAsync());
-        string second = await UploadOkAsync(c.CoordinatorA1, reportId, "second.pdf", Files.Pdf());
+        string second = await UploadOkAsync(c.LeaderA, reportId, "second.pdf", Files.Pdf());
 
-        uint resubmitted = await SubmitAsync(c.CoordinatorA1, reportId);
-        HttpResponseMessage approved = await c.LeaderA.Client.SendJsonAsync(HttpMethod.Post, $"{Reports}/{reportId}/approve",
-            new { version = resubmitted, score = 6, scoreBreakdown = new[] { new { criterion = "Evidence", points = 6 } } }, c.LeaderA.Csrf);
+        uint resubmitted = await SubmitAsync(c.LeaderA, reportId);
+        HttpResponseMessage approved = await c.Admin.Client.SendJsonAsync(HttpMethod.Post, $"{Reports}/{reportId}/approve",
+            new { version = resubmitted, score = 6, scoreBreakdown = new[] { new { criterion = "Evidence", points = 6 } } }, c.Admin.Csrf);
         Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
 
-        Assert.Equal("report_locked", await ManagementSteps.AssertStatusAsync(await UploadAsync(c.CoordinatorA1, reportId, "after.png", Files.Png(), "image/png"), HttpStatusCode.Conflict));
+        Assert.Equal("report_locked", await ManagementSteps.AssertStatusAsync(await UploadAsync(c.LeaderA, reportId, "after.png", Files.Png(), "image/png"), HttpStatusCode.Conflict));
         Assert.Equal("report_locked", await ManagementSteps.AssertStatusAsync(
-            await c.CoordinatorA1.Client.SendJsonAsync(HttpMethod.Delete, $"{Reports}/{reportId}/attachments/{second}", null, c.CoordinatorA1.Csrf), HttpStatusCode.Conflict));
+            await c.LeaderA.Client.SendJsonAsync(HttpMethod.Delete, $"{Reports}/{reportId}/attachments/{second}", null, c.LeaderA.Csrf), HttpStatusCode.Conflict));
 
         List<string> audit = await _factory.WithDbAsync((db) =>
             db.AuditLogs.Where((AuditLog a) => a.EntityId == reportId && a.Action.StartsWith("attachment.")).OrderBy((AuditLog a) => a.Id).Select((AuditLog a) => a.Action).ToListAsync());
@@ -212,17 +212,17 @@ public sealed class AttachmentTests : IAsyncLifetime
     public async Task Storage_outage_and_failed_database_commit_leave_no_metadata_and_no_orphaned_object()
     {
         Cast c = await Cast.ArrangeAsync(_factory);
-        string reportId = await CreateDraftAsync(c.CoordinatorA1);
+        string reportId = await CreateDraftAsync(c.LeaderA);
 
         // 1) Object storage down: 503, nothing recorded.
         RecordingStorage down = new RecordingStorage(failPut: true);
-        HttpClient downClient = await LoginThroughAsync(down, "fc.a1");
+        HttpClient downClient = await LoginThroughAsync(down, "fl.a");
         HttpResponseMessage unavailable = await UploadAsync(downClient, await downClient.GetCsrfTokenAsync(), reportId, "a.pdf", Files.Pdf(), "application/pdf");
         Assert.Equal("storage_unavailable", await ManagementSteps.AssertStatusAsync(unavailable, HttpStatusCode.ServiceUnavailable));
 
         // 2) Object stored, then the database commit loses a race (report changed meanwhile): object is deleted again.
         RecordingStorage racing = new RecordingStorage(failPut: false, afterPut: () => TouchReportAsync(reportId));
-        HttpClient racingClient = await LoginThroughAsync(racing, "fc.a1");
+        HttpClient racingClient = await LoginThroughAsync(racing, "fl.a");
         HttpResponseMessage conflict = await UploadAsync(racingClient, await racingClient.GetCsrfTokenAsync(), reportId, "b.pdf", Files.Pdf(), "application/pdf");
         Assert.Equal("concurrent_update", await ManagementSteps.AssertStatusAsync(conflict, HttpStatusCode.Conflict));
         Assert.Single(racing.Put);

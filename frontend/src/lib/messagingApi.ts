@@ -94,8 +94,7 @@ export const NOTIFICATION_LABELS: Record<NotificationType, string> = {
 export function notificationReportHref(role: Role, notification: AppNotification): string | null {
   if (notification.reportId === null) return null;
   if (notification.type !== "ReportSubmitted") return `/dashboard/reports/${notification.reportId}`;
-  if (role === "university_leader") return `/admin/approvals/${notification.reportId}`;
-  return role === "faculty_leader" ? `/dashboard/approvals/${notification.reportId}` : null;
+  return role === "university_leader" ? `/admin/approvals/${notification.reportId}` : null; // only the University Leader reviews
 }
 
 export const formatDateTime = (iso: string): string =>

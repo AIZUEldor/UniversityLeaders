@@ -63,7 +63,6 @@ export function PrivateShell({ title, items, children }: { title: string; items:
     (page !== undefined && page.roles.includes(user.role))
     || (pathname === "/admin/users" && user.role === "university_leader")
     || (pathname.startsWith("/dashboard/reports/") && user.role !== "university_leader")
-    || (pathname.startsWith("/dashboard/approvals/") && user.role === "faculty_leader")
     || (pathname.startsWith("/admin/approvals/") && user.role === "university_leader")
   );
   const wrongArea: boolean = user !== null && visible.length === 0;

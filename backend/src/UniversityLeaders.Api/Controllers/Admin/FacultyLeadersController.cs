@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UniversityLeaders.Api.Security;
+using UniversityLeaders.Application.Attachments;
 using UniversityLeaders.Application.Users;
 using UniversityLeaders.Domain.Enums;
 
@@ -11,6 +12,8 @@ namespace UniversityLeaders.Api.Controllers.Admin;
 [Authorize(Policy = AuthPolicies.UniversityLeader)]
 public sealed class FacultyLeadersController : ControllerBase
 {
+    private const long MaxPhotoRequestBytes = ProfilePhotoRules.MaxBytes + (64 * 1024);
+
     private readonly IUserManagementService _users;
 
     public FacultyLeadersController(IUserManagementService users)
@@ -56,5 +59,22 @@ public sealed class FacultyLeadersController : ControllerBase
     public async Task<ActionResult<ProvisionedUserResponse>> ResetPassword(Guid id, ResetPasswordRequest request, CancellationToken cancellationToken)
     {
         return await _users.ResetPasswordAsync(User.GetUserId(), UserRole.FacultyLeader, id, request, cancellationToken);
+    }
+
+    /// <summary>multipart/form-data, part "file": JPEG or PNG up to 1 MB. Replaces the current public photo.</summary>
+    [HttpPut("{id:guid}/photo")]
+    [RequestSizeLimit(MaxPhotoRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxPhotoRequestBytes)]
+    [RejectOversizedRequest(MaxPhotoRequestBytes)]
+    public async Task<ActionResult<ManagedUserResponse>> SetPhoto(Guid id, IFormFile? file, CancellationToken cancellationToken)
+    {
+        await using Stream content = file?.OpenReadStream() ?? Stream.Null;
+        return await _users.SetPhotoAsync(User.GetUserId(), UserRole.FacultyLeader, id, new AttachmentUpload(file?.FileName, file?.ContentType, file?.Length ?? 0, content), cancellationToken);
+    }
+
+    [HttpDelete("{id:guid}/photo")]
+    public async Task<ActionResult<ManagedUserResponse>> RemovePhoto(Guid id, CancellationToken cancellationToken)
+    {
+        return await _users.RemovePhotoAsync(User.GetUserId(), UserRole.FacultyLeader, id, cancellationToken);
     }
 }

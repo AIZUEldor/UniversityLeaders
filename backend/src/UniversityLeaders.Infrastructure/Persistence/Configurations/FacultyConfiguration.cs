@@ -11,6 +11,7 @@ internal sealed class FacultyConfiguration : IEntityTypeConfiguration<Faculty>
         builder.ToTable("faculties");
         builder.HasKey((Faculty f) => f.Id);
         builder.Property((Faculty f) => f.Name).HasMaxLength(200).IsRequired();
+        builder.Property((Faculty f) => f.Description).HasMaxLength(500);
         builder.Property((Faculty f) => f.Version).IsRowVersion();
         builder.HasIndex((Faculty f) => f.Name).IsUnique();
     }

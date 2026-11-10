@@ -67,9 +67,9 @@ internal sealed class ReportService : IReportService
     public async Task<ReportDetailResponse> CreateAsync(Guid actorId, CreateReportRequest request, CancellationToken cancellationToken)
     {
         User author = await GetActorAsync(actorId, cancellationToken);
-        if (author.Role == UserRole.UniversityLeader)
+        if (author.Role != UserRole.FacultyLeader)
         {
-            throw new ForbiddenException("forbidden", "The University Leader approves reports and does not submit them.");
+            throw new ForbiddenException("forbidden", "Only faculty leaders submit reports; the University Leader approves them.");
         }
 
         ReportContent content = ValidateContent(request.Title, request.Description, request.ActivityDate, request.Outcome, request.ParticipantCount, null);
@@ -168,8 +168,7 @@ internal sealed class ReportService : IReportService
         IReadOnlyList<Report> reports = actor.Role switch
         {
             UserRole.UniversityLeader => await _reports.ListForReviewAsync(ReportAccess.UniversityLeaderReviews, null, wanted, cancellationToken),
-            UserRole.FacultyLeader when actor.FacultyId is not null => await _reports.ListForReviewAsync(ReportAccess.FacultyLeaderReviews, actor.FacultyId, wanted, cancellationToken),
-            _ => throw new ForbiddenException("forbidden", "Only leaders review reports."),
+            _ => throw new ForbiddenException("forbidden", "Only the University Leader reviews reports."),
         };
         return reports.Select(ToSummary).ToList();
     }

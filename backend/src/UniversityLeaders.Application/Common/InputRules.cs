@@ -35,6 +35,35 @@ public static partial class InputRules
         return text;
     }
 
+    /// <summary>Trimmed text or null when empty; longer than <paramref name="maxLength"/> is an error.</summary>
+    public static string? OptionalText(string? value, int maxLength, string field, Dictionary<string, string[]> errors)
+    {
+        string trimmed = (value ?? string.Empty).Trim();
+        if (trimmed.Length > maxLength)
+        {
+            errors[field] = new[] { $"At most {maxLength} characters." };
+        }
+
+        return trimmed.Length == 0 ? null : trimmed;
+    }
+
+    /// <summary>Optional phone number: digits with optional +, spaces, dashes and brackets, 7-20 characters.</summary>
+    public static string? Phone(string? value, Dictionary<string, string[]> errors, string field = "phone")
+    {
+        string trimmed = (value ?? string.Empty).Trim();
+        if (trimmed.Length == 0)
+        {
+            return null;
+        }
+
+        if (trimmed.Length is < 7 or > 20 || !PhonePattern().IsMatch(trimmed))
+        {
+            errors[field] = new[] { "Use digits with optional +, spaces, dashes or brackets (7-20 characters)." };
+        }
+
+        return trimmed;
+    }
+
     public static void NewPassword(string? password, string userName, string field, Dictionary<string, string[]> errors)
     {
         string value = password ?? string.Empty;
@@ -84,4 +113,7 @@ public static partial class InputRules
 
     [GeneratedRegex("^[a-z0-9._-]+$")]
     private static partial Regex UserNamePattern();
+
+    [GeneratedRegex(@"^\+?[0-9][0-9 ()\-]*[0-9]$")]
+    private static partial Regex PhonePattern();
 }

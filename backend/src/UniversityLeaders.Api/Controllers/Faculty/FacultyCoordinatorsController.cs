@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UniversityLeaders.Api.Security;
+using UniversityLeaders.Application.Attachments;
 using UniversityLeaders.Application.Users;
 
 namespace UniversityLeaders.Api.Controllers.Faculty;
@@ -14,6 +15,8 @@ namespace UniversityLeaders.Api.Controllers.Faculty;
 [Authorize(Policy = AuthPolicies.FacultyLeader)]
 public sealed class FacultyCoordinatorsController : ControllerBase
 {
+    private const long MaxPhotoRequestBytes = ProfilePhotoRules.MaxBytes + (64 * 1024);
+
     private readonly IUserManagementService _users;
 
     public FacultyCoordinatorsController(IUserManagementService users)
@@ -33,13 +36,12 @@ public sealed class FacultyCoordinatorsController : ControllerBase
         return await _users.GetFacultyCoordinatorAsync(User.GetUserId(), id, cancellationToken);
     }
 
-    /// <summary>Creates the coordinator and returns its temporary password once (never stored, never shown again).</summary>
+    /// <summary>Creates the coordinator profile (no login, no password) in the caller's own faculty.</summary>
     [HttpPost]
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<ActionResult<ProvisionedUserResponse>> Create(CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ManagedUserResponse>> Create(CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
     {
-        ProvisionedUserResponse result = await _users.CreateFacultyCoordinatorAsync(User.GetUserId(), request, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id = result.User.Id }, result);
+        ManagedUserResponse result = await _users.CreateFacultyCoordinatorAsync(User.GetUserId(), request, cancellationToken);
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
@@ -54,10 +56,20 @@ public sealed class FacultyCoordinatorsController : ControllerBase
         return await _users.DeactivateFacultyCoordinatorAsync(User.GetUserId(), id, request, cancellationToken);
     }
 
-    /// <summary>New one-time temporary password (shown once), forced change at next login, all sessions revoked.</summary>
-    [HttpPost("{id:guid}/reset-password")]
-    public async Task<ActionResult<ProvisionedUserResponse>> ResetPassword(Guid id, ResetPasswordRequest request, CancellationToken cancellationToken)
+    /// <summary>multipart/form-data, part "file": JPEG or PNG up to 1 MB. Replaces the current public photo.</summary>
+    [HttpPut("{id:guid}/photo")]
+    [RequestSizeLimit(MaxPhotoRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxPhotoRequestBytes)]
+    [RejectOversizedRequest(MaxPhotoRequestBytes)]
+    public async Task<ActionResult<ManagedUserResponse>> SetPhoto(Guid id, IFormFile? file, CancellationToken cancellationToken)
     {
-        return await _users.ResetFacultyCoordinatorPasswordAsync(User.GetUserId(), id, request, cancellationToken);
+        await using Stream content = file?.OpenReadStream() ?? Stream.Null;
+        return await _users.SetFacultyCoordinatorPhotoAsync(User.GetUserId(), id, new AttachmentUpload(file?.FileName, file?.ContentType, file?.Length ?? 0, content), cancellationToken);
+    }
+
+    [HttpDelete("{id:guid}/photo")]
+    public async Task<ActionResult<ManagedUserResponse>> RemovePhoto(Guid id, CancellationToken cancellationToken)
+    {
+        return await _users.RemoveFacultyCoordinatorPhotoAsync(User.GetUserId(), id, cancellationToken);
     }
 }

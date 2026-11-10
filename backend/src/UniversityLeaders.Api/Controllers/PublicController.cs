@@ -27,6 +27,20 @@ public sealed class PublicController : ControllerBase
         return await _directory.GetAsync(cancellationToken);
     }
 
+    /// <summary>Public profile photo. A new upload gets a new id, so responses are immutable and cached for a year.</summary>
+    [HttpGet("photos/{photoId:guid}")]
+    public async Task<IActionResult> Photo(Guid photoId, CancellationToken cancellationToken)
+    {
+        PublicPhoto? photo = await _directory.GetPhotoAsync(photoId, cancellationToken);
+        if (photo is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        return File(photo.Content, photo.ContentType);
+    }
+
     [HttpGet("completed-work")]
     public async Task<ActionResult<PagedResponse<CompletedWorkResponse>>> CompletedWork(
         [FromQuery] int? facultyId, [FromQuery] int? directionId, [FromQuery] int? page, [FromQuery] int? pageSize, CancellationToken cancellationToken)

@@ -7,10 +7,13 @@ namespace UniversityLeaders.Api.Tests;
 /// <summary>A signed-in user (password already changed) with their CSRF token.</summary>
 internal sealed record Actor(HttpClient Client, string Csrf, Guid Id);
 
-/// <summary>University Leader, two faculties with leaders, three faculty coordinators and one university coordinator.</summary>
+/// <summary>
+/// University Leader and two faculties with signed-in leaders, plus coordinator profiles (no login): three faculty
+/// coordinator profiles of faculty A and one of faculty B, identified by their profile ids.
+/// </summary>
 internal sealed record Cast(
     Actor Admin, int FacultyA, int FacultyB, Actor LeaderA, Actor LeaderB,
-    Actor CoordinatorA1, Actor CoordinatorA2, Actor CoordinatorB1, Actor UniversityCoordinator)
+    Guid CoordinatorA1, Guid CoordinatorA2, Guid CoordinatorB1)
 {
     public static async Task<Cast> ArrangeAsync(AuthApiFactory factory)
     {
@@ -22,11 +25,10 @@ internal sealed record Cast(
         int facultyB = await ManagementSteps.CreateFacultyAsync(adminClient, adminCsrf, "Faculty B");
         Actor leaderA = await ProvisionAsync(factory, admin, "/api/admin/faculty-leaders", "fl.a", "Leader A", new { facultyId = facultyA });
         Actor leaderB = await ProvisionAsync(factory, admin, "/api/admin/faculty-leaders", "fl.b", "Leader B", new { facultyId = facultyB });
-        Actor coordinatorA1 = await ProvisionAsync(factory, leaderA, "/api/faculty/coordinators", "fc.a1", "Coordinator A1", new { directionId = 1 });
-        Actor coordinatorA2 = await ProvisionAsync(factory, leaderA, "/api/faculty/coordinators", "fc.a2", "Coordinator A2", new { directionId = 2 });
-        Actor coordinatorB1 = await ProvisionAsync(factory, leaderB, "/api/faculty/coordinators", "fc.b1", "Coordinator B1", new { directionId = 1 });
-        Actor universityCoordinator = await ProvisionAsync(factory, admin, "/api/admin/university-coordinators", "uc.three", "University Coordinator", new { directionId = 3 });
-        return new Cast(admin, facultyA, facultyB, leaderA, leaderB, coordinatorA1, coordinatorA2, coordinatorB1, universityCoordinator);
+        Guid coordinatorA1 = await ManagementSteps.CreateProfileAsync(leaderA, "/api/faculty/coordinators", "Coordinator A1", 1);
+        Guid coordinatorA2 = await ManagementSteps.CreateProfileAsync(leaderA, "/api/faculty/coordinators", "Coordinator A2", 2);
+        Guid coordinatorB1 = await ManagementSteps.CreateProfileAsync(leaderB, "/api/faculty/coordinators", "Coordinator B1", 1);
+        return new Cast(admin, facultyA, facultyB, leaderA, leaderB, coordinatorA1, coordinatorA2, coordinatorB1);
     }
 
     private static async Task<Actor> ProvisionAsync(AuthApiFactory factory, Actor creator, string url, string userName, string fullName, object seat)

@@ -8,8 +8,7 @@ const UL: Role[] = ["university_leader"];
 const ITEMS: NavItem[] = [
   { href: "/admin", label: "Umumiy ko'rinish", roles: UL },
   { href: "/admin/faculties", label: "Fakultetlar", roles: UL },
-  { href: "/admin/faculty-leaders", label: "Fakultet rahbarlari", roles: UL },
-  { href: "/admin/university-coordinators", label: "Universitet koordinatorlari", roles: UL },
+  { href: "/admin/faculty-leaders", label: "Fakultet yetakchilari", roles: UL },
   { href: "/admin/approvals", label: "Hisobotlarni tasdiqlash", roles: UL },
   { href: "/admin/ranking", label: "Reyting nazorati", roles: UL },
   { href: "/admin/announcements", label: "E'lonlar", roles: UL },

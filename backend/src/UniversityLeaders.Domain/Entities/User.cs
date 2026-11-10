@@ -38,6 +38,15 @@ public class User
     /// <summary>While in the future, every login is refused (even with the right password).</summary>
     public DateTimeOffset? LockoutEndsAt { get; set; }
 
+    /// <summary>Contact number of a coordinator profile; shown publicly only when <see cref="PhoneIsPublic"/> is true.</summary>
+    public string? Phone { get; set; }
+
+    public bool PhoneIsPublic { get; set; }
+
+    /// <summary>Current public profile photo, if any.</summary>
+    public Guid? PhotoId { get; set; }
+    public ProfilePhoto? Photo { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? DeactivatedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

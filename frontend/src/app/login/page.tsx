@@ -100,7 +100,7 @@ function Login() {
           >
             {busy ? "Kirilmoqda..." : "Kirish"}
           </button>
-          <p className="text-center text-xs text-slate-500">Login va vaqtinchalik parolni universitet rahbari yoki fakultet rahbari beradi.</p>
+          <p className="text-center text-xs text-slate-500">Tizimga faqat universitet yetakchisi va 13 fakultet yetakchisi kiradi. Login va vaqtinchalik parolni universitet yetakchisi beradi.</p>
         </form>
       </div>
     </main>

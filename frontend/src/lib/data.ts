@@ -6,8 +6,8 @@ export type Role =
   | "faculty_coordinator";
 
 export const ROLE_LABELS: Record<Role, string> = {
-  university_leader: "Universitet rahbari",
-  faculty_leader: "Fakultet rahbari",
+  university_leader: "Universitet yetakchisi",
+  faculty_leader: "Fakultet yetakchisi",
   university_coordinator: "Universitet koordinatori",
   faculty_coordinator: "Fakultet koordinatori",
 };
