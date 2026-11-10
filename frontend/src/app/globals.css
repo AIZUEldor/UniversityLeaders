@@ -193,3 +193,70 @@
   button, [role="button"], header nav a, .btn { transition: none; }
   button:not(:disabled):active, [role="button"]:active, header nav a:active, .btn:active { transform: none; }
 }
+
+/* ---------------------------------------------------------------- dark theme
+   html[data-theme="dark"] is set before paint by THEME_SCRIPT (lib/theme.ts). The slate scale is inverted through
+   Tailwind's colour variables, so every text/border/background shade flips from one place. White surfaces and the
+   light accent tints/dark accent texts are overridden per class, because the same colours are also used as button
+   backgrounds and white text that must not change. `.theme-fixed` (private sidebar) keeps the original, already dark
+   palette. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-slate-50: #0b1120;
+  --color-slate-100: #1e293b;
+  --color-slate-200: #334155;
+  --color-slate-300: #475569;
+  --color-slate-400: #7c8ba1;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #b4c0d0;
+  --color-slate-700: #cbd5e1;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #f1f5f9;
+  --color-slate-950: #f8fafc;
+  --surface: #111a2b;
+}
+
+:root[data-theme="dark"] .theme-fixed {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+}
+
+:root[data-theme="dark"] .bg-white { background-color: var(--surface); }
+:root[data-theme="dark"] .bg-white\/70 { background-color: color-mix(in srgb, var(--surface) 70%, transparent); }
+:root[data-theme="dark"] .bg-white\/80 { background-color: color-mix(in srgb, var(--surface) 80%, transparent); }
+:root[data-theme="dark"] .bg-white\/85 { background-color: color-mix(in srgb, var(--surface) 85%, transparent); }
+:root[data-theme="dark"] .bg-white\/90 { background-color: color-mix(in srgb, var(--surface) 90%, transparent); }
+:root[data-theme="dark"] .border-white { border-color: var(--surface); }
+
+/* Accent tints (badges, notices) become deep tints; accent texts become light. */
+:root[data-theme="dark"] .bg-indigo-50, :root[data-theme="dark"] .hover\:bg-indigo-50:hover { background-color: #0b3a47; }
+:root[data-theme="dark"] .bg-indigo-50\/80 { background-color: rgb(11 58 71 / 0.8); }
+:root[data-theme="dark"] .bg-indigo-100 { background-color: #0b5163; }
+:root[data-theme="dark"] .border-indigo-100, :root[data-theme="dark"] .border-indigo-200 { border-color: #0b5163; }
+:root[data-theme="dark"] .text-indigo-600, :root[data-theme="dark"] .text-indigo-700 { color: #6fc9e3; }
+:root[data-theme="dark"] .text-indigo-800, :root[data-theme="dark"] .text-indigo-900 { color: #a9e0f0; }
+:root[data-theme="dark"] .bg-emerald-50, :root[data-theme="dark"] .bg-emerald-100 { background-color: #063b2c; }
+:root[data-theme="dark"] .border-emerald-200 { border-color: #065f46; }
+:root[data-theme="dark"] .text-emerald-700, :root[data-theme="dark"] .text-emerald-800 { color: #6ee7b7; }
+:root[data-theme="dark"] .bg-amber-100 { background-color: #4a3305; }
+:root[data-theme="dark"] .text-amber-600, :root[data-theme="dark"] .text-amber-700, :root[data-theme="dark"] .text-amber-800 { color: #fcd34d; }
+:root[data-theme="dark"] .bg-rose-50, :root[data-theme="dark"] .bg-rose-100, :root[data-theme="dark"] .bg-red-50 { background-color: #4c0f1c; }
+:root[data-theme="dark"] .border-rose-200 { border-color: #881337; }
+:root[data-theme="dark"] .text-rose-700, :root[data-theme="dark"] .text-rose-800,
+:root[data-theme="dark"] .text-red-700, :root[data-theme="dark"] .text-red-800 { color: #fda4af; }
+
+/* The logo has a white background (multiplied away on light pages); on dark pages it sits on a white chip. */
+:root[data-theme="dark"] .logo-img { mix-blend-mode: normal; background-color: #ffffff; border-radius: 0.375rem; padding: 2px 4px; }
+
+:root[data-theme="dark"] .animated-bg { background: linear-gradient(180deg, #08111d 0%, #0a1712 100%); }
+:root[data-theme="dark"] .animated-bg__blob { opacity: 0.18; }
+:root[data-theme="dark"] .animated-bg__blob--white { opacity: 0.06; }

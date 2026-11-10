@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { PrivateShell, type NavItem } from "@/components/PrivateShell";
 import { type Role } from "@/lib/data";
+import { T } from "@/lib/i18n";
 
 // Only the 13 faculty leaders sign in to this area; coordinators are profiles without a login.
 const FL: Role[] = ["faculty_leader"];
@@ -19,7 +20,7 @@ const ITEMS: NavItem[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<p className="p-6 text-sm">Yuklanmoqda...</p>}>
+    <Suspense fallback={<p className="p-6 text-sm"><T>Yuklanmoqda...</T></p>}>
       <PrivateShell title="Shaxsiy kabinet" items={ITEMS}>{children}</PrivateShell>
     </Suspense>
   );

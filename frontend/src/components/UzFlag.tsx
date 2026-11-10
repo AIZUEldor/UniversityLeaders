@@ -1,3 +1,7 @@
+"use client";
+
+import { useT } from "@/lib/i18n";
+
 // State flag of the Republic of Uzbekistan drawn as SVG (no external asset): proportions 1:2, stripes azure, white and
 // green separated by thin red lines (80:5:80:5:80), a white crescent and twelve white stars (three rows of four).
 // The flag itself is never distorted; the "wave" is a light/shade overlay plus a gentle 3D sway (globals.css).
@@ -14,8 +18,8 @@ function starPoints(cx: number, cy: number, r: number): string {
   return points.join(" ");
 }
 
-function FlagSvg() {
-  return <svg viewBox="0 0 500 250" className="block h-full w-full" role="img" aria-label="O'zbekiston Respublikasi Davlat bayrog'i">
+function FlagSvg({ label }: { label: string }) {
+  return <svg viewBox="0 0 500 250" className="block h-full w-full" role="img" aria-label={label}>
     <rect width="500" height="250" fill="#1eb53a" />
     <rect width="500" height="125" fill="#0099b5" />
     <rect y="80" width="500" height="90" fill="#ce1126" />
@@ -30,7 +34,7 @@ function FlagSvg() {
 /** Waving flag for hero sections. Respects prefers-reduced-motion (the animation stops, the flag stays). */
 export function UzFlag({ className = "" }: { className?: string }) {
   return <div className={`flag-wave relative aspect-[2/1] overflow-hidden rounded-md ${className}`}>
-    <FlagSvg />
+    <FlagSvg label={useT()("O'zbekiston Respublikasi Davlat bayrog'i")} />
     <div className="flag-wave__shade pointer-events-none absolute inset-0" aria-hidden="true" />
   </div>;
 }

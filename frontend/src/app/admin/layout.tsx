@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { PrivateShell, type NavItem } from "@/components/PrivateShell";
 import { type Role } from "@/lib/data";
+import { T } from "@/lib/i18n";
 
 const UL: Role[] = ["university_leader"];
 const ITEMS: NavItem[] = [
@@ -17,7 +18,7 @@ const ITEMS: NavItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<p className="p-6 text-sm">Yuklanmoqda...</p>}>
+    <Suspense fallback={<p className="p-6 text-sm"><T>Yuklanmoqda...</T></p>}>
       <PrivateShell title="Admin — Universitet rahbari" items={ITEMS}>{children}</PrivateShell>
     </Suspense>
   );

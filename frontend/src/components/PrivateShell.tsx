@@ -6,8 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { Preferences } from "@/components/Preferences";
 import { homeFor, useAuth, type CurrentUser } from "@/lib/auth";
 import { ROLE_LABELS, type Role } from "@/lib/data";
+import { useT } from "@/lib/i18n";
 import { inboxAnnouncementsApi, notificationsApi } from "@/lib/messagingApi";
 import { useMessagingHints } from "@/lib/realtime";
 
@@ -56,6 +58,7 @@ export function PrivateShell({ title, items, children }: { title: string; items:
   const router = useRouter();
   const { state, logout } = useAuth();
   const [open, setOpen] = useState<boolean>(false);
+  const t = useT();
 
   const user: CurrentUser | null = state.status === "authenticated" ? state.user : null;
   const unread: UnreadCounts = useUnreadCounts(user);
@@ -80,16 +83,16 @@ export function PrivateShell({ title, items, children }: { title: string; items:
   };
 
   if (state.status === "loading" || wrongArea) {
-    return <CenteredMessage title="Yuklanmoqda..." />;
+    return <CenteredMessage title={t("Yuklanmoqda...")} />;
   }
 
   if (state.status === "anonymous") {
     return (
       <CenteredMessage
-        title={state.expired ? "Sessiya tugadi" : "Avval tizimga kiring"}
-        text={state.expired ? "Xavfsizlik uchun qaytadan kiring." : "Bu bo'lim faqat tizimga kirgan foydalanuvchilar uchun."}
+        title={state.expired ? t("Sessiya tugadi") : t("Avval tizimga kiring")}
+        text={state.expired ? t("Xavfsizlik uchun qaytadan kiring.") : t("Bu bo'lim faqat tizimga kirgan foydalanuvchilar uchun.")}
         href="/login"
-        linkText="Kirish sahifasi →"
+        linkText={t("Kirish sahifasi →")}
       />
     );
   }
@@ -98,18 +101,18 @@ export function PrivateShell({ title, items, children }: { title: string; items:
   return (
     <div className="min-h-screen md:flex">
       <AnimatedBackground />
-      <aside className="relative border-b border-slate-800 bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-200 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:overflow-y-auto md:border-b-0">
+      <aside className="theme-fixed relative border-b border-slate-800 bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-200 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:overflow-y-auto md:border-b-0">
         <div className="flag-ribbon" aria-hidden="true" />
         <div className="flex items-center gap-3 px-4 py-4">
-          <Link href="/" className="btn shrink-0 rounded-lg bg-white px-1.5 py-1" title="Ommaviy sayt">
-            <Image src="/ozmu-logo.png" alt="O'zMU Yoshlar ittifoqi logotipi" width={291} height={128} className="h-7 w-auto" />
+          <Link href="/" className="btn shrink-0 rounded-lg bg-[#fff] px-1.5 py-1" title={t("Ommaviy sayt")}>
+            <Image src="/ozmu-logo.png" alt={t("O'zMU Yoshlar ittifoqi logotipi")} width={291} height={128} className="h-7 w-auto" />
           </Link>
-          <div className="min-w-0 text-sm font-bold leading-tight text-white">{title}</div>
+          <div className="min-w-0 text-sm font-bold leading-tight text-white">{t(title)}</div>
           <button
             className="ml-auto rounded-md border border-slate-600 px-3 py-1 text-sm md:hidden"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            aria-label="Menyu"
+            aria-label={t("Menyu")}
           >
             ☰
           </button>
@@ -123,9 +126,9 @@ export function PrivateShell({ title, items, children }: { title: string; items:
                 onClick={() => setOpen(false)}
                 className={`rounded-md px-3 py-2 text-sm ${pathname === i.href ? "bg-indigo-600 text-white" : "hover:bg-slate-800"}`}
               >
-                {i.label}
+                {t(i.label)}
                 {i.badge && unread[i.badge] > 0 && (
-                  <span className="ml-2 rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-slate-900" aria-label={`${unread[i.badge]} ta o'qilmagan`}>
+                  <span className="ml-2 rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-slate-900" aria-label={t("{n} ta o'qilmagan", { n: unread[i.badge] })}>
                     {unread[i.badge]}
                   </span>
                 )}
@@ -134,16 +137,17 @@ export function PrivateShell({ title, items, children }: { title: string; items:
           <div className="mt-4 border-t border-slate-700 pt-4 text-xs text-slate-400">
             <div className="font-medium text-slate-200">{signedIn.fullName}</div>
             <div>
-              {ROLE_LABELS[signedIn.role]} · {signedIn.userName}
+              {t(ROLE_LABELS[signedIn.role])} · {signedIn.userName}
             </div>
             <div className="mt-3 flex gap-3">
               <Link href="/" className="hover:text-white">
-                Ommaviy sayt
+                {t("Ommaviy sayt")}
               </Link>
               <button onClick={() => void signOut()} className="hover:text-white">
-                Chiqish
+                {t("Chiqish")}
               </button>
             </div>
+            <Preferences className="mt-3" />
           </div>
         </nav>
       </aside>
@@ -155,7 +159,7 @@ export function PrivateShell({ title, items, children }: { title: string; items:
           ) : allowed ? (
             children
           ) : (
-            <CenteredMessage title="Bu bo'lim sizning rolingiz uchun emas." href={homeFor(signedIn.role)} linkText="Mening bo'limimga o'tish →" />
+            <CenteredMessage title={t("Bu bo'lim sizning rolingiz uchun emas.")} href={homeFor(signedIn.role)} linkText={t("Mening bo'limimga o'tish →")} />
           )}
         </main>
       </div>

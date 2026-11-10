@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ManagementMessage } from "@/components/admin/ManagementUi";
+import { useT } from "@/lib/i18n";
 import { reportsApi, type ReportSummary } from "@/lib/reportsApi";
 import { ReportDetailView } from "./ReportDetailView";
+import { STATUS_LABELS } from "./ReportList";
 
 export function MediaWorkspace() {
+  const t = useT();
   const [reports, setReports] = useState<ReportSummary[]>([]);
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(true);
@@ -21,10 +24,10 @@ export function MediaWorkspace() {
 
   return <div className="space-y-5">
     {error !== null && <ManagementMessage error={error} onRetry={() => void load()} />}
-    {loading ? <p role="status" className="text-sm text-slate-500">Hisobotlar yuklanmoqda...</p> : <>
-      {error !== null && reports.length === 0 ? null : reports.length === 0 ? <p className="text-sm text-slate-500">Avval hisobot qoralamasini yarating.</p> : <label className="block text-sm font-medium">Hisobotni tanlang
+    {loading ? <p role="status" className="text-sm text-slate-500">{t("Hisobotlar yuklanmoqda...")}</p> : <>
+      {error !== null && reports.length === 0 ? null : reports.length === 0 ? <p className="text-sm text-slate-500">{t("Avval hisobot qoralamasini yarating.")}</p> : <label className="block text-sm font-medium">{t("Hisobotni tanlang")}
         <select value={selected} onChange={(event) => setSelected(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2">
-          <option value="">Tanlang</option>{reports.map((report) => <option key={report.id} value={report.id}>{report.title} — {report.status}</option>)}
+          <option value="">{t("Tanlang")}</option>{reports.map((report) => <option key={report.id} value={report.id}>{report.title} — {t(STATUS_LABELS[report.status])}</option>)}
         </select>
       </label>}
       {selected && <ReportDetailView key={selected} id={selected} mode="author" backHref="/dashboard/my-work" />}

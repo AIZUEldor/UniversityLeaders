@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PublicNav } from "@/components/PublicNav";
+import { T } from "@/lib/i18n";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,10 +14,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="flag-ribbon" aria-hidden="true" />
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-sm text-slate-500">
           <div className="flex items-center gap-3">
-            <Image src="/ozmu-logo.png" alt="" width={291} height={128} className="h-8 w-auto mix-blend-multiply" />
-            <span>Mirzo Ulug&apos;bek nomidagi O&apos;zbekiston Milliy universiteti · Yoshlar ittifoqi</span>
+            <Image src="/ozmu-logo.png" alt="" width={291} height={128} className="logo-img h-8 w-auto mix-blend-multiply" />
+            <span><T>{"Mirzo Ulug'bek nomidagi O'zbekiston Milliy universiteti · Yoshlar ittifoqi"}</T></span>
           </div>
-          <span>© Universitet Yetakchilari platformasi</span>
+          <span>© <T>Universitet Yetakchilari platformasi</T></span>
         </div>
       </footer>
     </div>

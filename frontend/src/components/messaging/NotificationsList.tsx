@@ -6,11 +6,13 @@ import { ManagementMessage, Pager, secondaryClass } from "@/components/admin/Man
 import { useAuth } from "@/lib/auth";
 import { formatDateTime, NOTIFICATION_LABELS, notificationReportHref, notificationsApi, type AppNotification } from "@/lib/messagingApi";
 import { announceLocalChange, useMessagingHints, type MessagingHint } from "@/lib/realtime";
+import { useT } from "@/lib/i18n";
 import { usePublicRequest } from "@/lib/usePublicRequest";
 
 /** The signed-in user's own report notifications (any role). Rendered only inside PrivateShell. */
 export function NotificationsList() {
   const { state } = useAuth();
+  const t = useT();
   const role = state.status === "authenticated" ? state.user.role : null;
   const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -28,14 +30,14 @@ export function NotificationsList() {
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center gap-3">
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unreadOnly} onChange={(event) => { setUnreadOnly(event.target.checked); setPage(1); }} />Faqat o&apos;qilmaganlar</label>
-      <button type="button" disabled={!hasUnread} onClick={() => void run(notificationsApi.markAllRead)} className={`${secondaryClass} ml-auto`}>Hammasini o&apos;qildi deb belgilash</button>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unreadOnly} onChange={(event) => { setUnreadOnly(event.target.checked); setPage(1); }} />{t("Faqat o'qilmaganlar")}</label>
+      <button type="button" disabled={!hasUnread} onClick={() => void run(notificationsApi.markAllRead)} className={`${secondaryClass} ml-auto`}>{t("Hammasini o'qildi deb belgilash")}</button>
     </div>
     {actionError !== null && <ManagementMessage error={actionError} />}
     {error !== null && <ManagementMessage error={error} onRetry={() => void reload()} />}
-    {loading && data === null ? <p role="status" className="text-sm text-slate-500">Bildirishnomalar yuklanmoqda...</p>
+    {loading && data === null ? <p role="status" className="text-sm text-slate-500">{t("Bildirishnomalar yuklanmoqda...")}</p>
       : data === null ? null
-      : data.items.length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">{unreadOnly ? "O'qilmagan bildirishnoma yo'q." : "Hozircha bildirishnoma yo'q."}</p>
+      : data.items.length === 0 ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">{t(unreadOnly ? "O'qilmagan bildirishnoma yo'q." : "Hozircha bildirishnoma yo'q.")}</p>
       : <>
         <ul className="space-y-2">{data.items.map((item: AppNotification) => {
           const href: string | null = role === null ? null : notificationReportHref(role, item);
@@ -43,13 +45,13 @@ export function NotificationsList() {
           return <li key={item.id} className={`rounded-lg border bg-white p-3 ${unread ? "border-indigo-300" : "border-slate-200"}`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
-                <div className="font-medium">{unread && <span className="mr-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">Yangi</span>}{NOTIFICATION_LABELS[item.type]}</div>
+                <div className="font-medium">{unread && <span className="mr-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">{t("Yangi")}</span>}{t(NOTIFICATION_LABELS[item.type])}</div>
                 <p className="break-words text-sm text-slate-600">{item.message}</p>
                 <div className="mt-1 text-xs text-slate-400">{formatDateTime(item.createdAt)}</div>
               </div>
               <div className="flex shrink-0 gap-2 text-sm">
-                {href && <Link href={href} onClick={() => { if (unread) void markRead(item); }} className="text-indigo-700 hover:underline">Hisobotni ochish</Link>}
-                {unread && <button type="button" onClick={() => void markRead(item)} className="text-slate-600 underline">O&apos;qildi</button>}
+                {href && <Link href={href} onClick={() => { if (unread) void markRead(item); }} className="text-indigo-700 hover:underline">{t("Hisobotni ochish")}</Link>}
+                {unread && <button type="button" onClick={() => void markRead(item)} className="text-slate-600 underline">{t("O'qildi")}</button>}
               </div>
             </div>
           </li>;
