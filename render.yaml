@@ -2,6 +2,8 @@
 # Free Render web services (sleep after 15 min idle, 750 instance hours per workspace and month shared with every other
 # free service) and Neon free PostgreSQL, which also stores attachment files. Secrets use `sync: false`.
 # Independent of the existing "university-leaders-demo" service, which is not touched by this file.
+# Only the API stays on Render, kept awake 24/7 (~720 of the 750 shared hours). The frontend runs on Vercel, which does
+# not sleep. The web service below is kept only as a fallback: running it as well would use up the free hours by mid-month.
 # Paid upgrade: plan: starter, add `preDeployCommand: /app/efbundle`, optionally custom domains (docs/DEPLOYMENT.md §1).
 
 services:

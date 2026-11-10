@@ -14,8 +14,8 @@ auto-deploy or delete it**: the current frontend needs `NEXT_PUBLIC_API_URL` and
 
 | Part | Service (free) | Limits that matter |
 |---|---|---|
-| Frontend | Render free web service `university-leaders-web` | Sleeps after 15 min idle (~1 min cold start). |
-| API | Render free web service `university-leaders-api` (Docker) | Same sleep; no shell, no pre-deploy command. |
+| Frontend | Vercel Hobby project (root `frontend/`, same env vars as below) | Does not sleep. Rewrites proxy `/api` and `/hubs`; WebSockets are not proxied, so SignalR uses long polling. |
+| API | Render free web service `university-leaders-api` (Docker) | Sleeps after 15 min idle (~1 min cold start); kept awake by an external monitor hitting `/health` every 5 min (UptimeRobot / cron-job.org; GitHub Actions cron is too delayed for a 15 min window). `/health` does not touch the database, so Neon still suspends. No shell, no pre-deploy command. |
 | PostgreSQL | Neon free project (region Frankfurt) | 1 GB storage, 100 compute-hours/month, persistent, no card. |
 | Files | Stored in the same Neon database | 500 MB quota for all attachments (10 MB per file), leaving room for data. |
 
