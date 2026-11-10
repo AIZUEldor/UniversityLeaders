@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Preferences } from "@/components/Preferences";
-import { UzFlag } from "@/components/UzFlag";
+import { UniversitySeal } from "@/components/UniversitySeal";
 import { describeError, homeFor, useAuth, type CurrentUser } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { publicApi, type PublicFaculty } from "@/lib/publicApi";
@@ -65,7 +65,7 @@ function Login() {
             <Image src="/ozmu-logo.png" alt={t("O'zMU Yoshlar ittifoqi logotipi")} width={291} height={128} priority className="logo-img h-14 w-auto mix-blend-multiply" />
             {t("Universitet Yetakchilari")}
           </Link>
-          <UzFlag className="mt-3 w-24" />
+          <UniversitySeal className="mt-4 w-28" priority />
           <p className="mt-3 text-sm text-slate-600">{t("Tizimga kirish")}</p>
         </div>
 

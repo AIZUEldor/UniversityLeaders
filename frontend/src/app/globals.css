@@ -127,22 +127,41 @@
   animation: hero-sweep 9s ease-in-out infinite;
 }
 
-/* ---------------------------------------------------------------- waving flag */
+/* ---------------------------------------------------------------- university seal */
 
-.flag-wave {
-  transform-origin: left center;
-  animation: flag-sway 6s ease-in-out infinite;
-  filter: drop-shadow(0 10px 18px rgba(6, 42, 53, 0.25));
+/* Soft glow behind the seal, slowly breathing; white on the hero gradient, azure on light pages. */
+.seal__glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0%, rgba(111, 201, 227, 0.25) 45%, transparent 70%);
+  filter: blur(8px);
+  animation: seal-glow 5s ease-in-out infinite;
 }
 
-/* Moving light and shade across the cloth, so the flat SVG reads as fabric in the wind. */
-.flag-wave__shade {
-  background: linear-gradient(90deg,
-      rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.14) 12%, rgba(255, 255, 255, 0.16) 25%, rgba(0, 0, 0, 0.12) 38%,
-      rgba(255, 255, 255, 0.14) 50%, rgba(0, 0, 0, 0.12) 62%, rgba(255, 255, 255, 0.16) 75%, rgba(0, 0, 0, 0.14) 88%, rgba(0, 0, 0, 0) 100%);
-  background-size: 200% 100%;
-  mix-blend-mode: overlay;
-  animation: flag-ripple 3.2s linear infinite;
+/* The disc floats and tilts gently in 3D, like a medal turning in the light. */
+.seal__disc {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  box-shadow: 0 18px 40px -12px rgba(15, 23, 92, 0.55), 0 0 0 4px rgba(255, 255, 255, 0.6);
+  animation: seal-float 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+/* A light band sweeps across the face every few seconds. */
+.seal__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.55) 48%, transparent 60%);
+  background-size: 250% 100%;
+  mix-blend-mode: soft-light;
+  animation: seal-shine 4.5s ease-in-out infinite;
+}
+
+:root[data-theme="dark"] .seal__glow {
+  background: radial-gradient(circle, rgba(111, 201, 227, 0.35) 0%, rgba(30, 181, 58, 0.12) 45%, transparent 70%);
 }
 
 /* ---------------------------------------------------------------- entrance */
@@ -157,15 +176,16 @@
 @keyframes dots-pan { to { transform: translate(28px, 28px); } }
 @keyframes ribbon-flow { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
 @keyframes hero-sweep { 0%, 100% { background-position: 120% 0; } 50% { background-position: -20% 0; } }
-@keyframes flag-sway {
-  0%, 100% { transform: perspective(700px) rotateY(-6deg) skewY(0.6deg); }
-  50% { transform: perspective(700px) rotateY(4deg) skewY(-0.8deg); }
+@keyframes seal-float {
+  0%, 100% { transform: perspective(800px) translateY(0) rotateY(-10deg) rotateX(3deg); }
+  50% { transform: perspective(800px) translateY(-10px) rotateY(10deg) rotateX(-3deg); }
 }
-@keyframes flag-ripple { to { background-position: -200% 0; } }
+@keyframes seal-glow { 0%, 100% { opacity: 0.65; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes seal-shine { 0% { background-position: 130% 0; } 60%, 100% { background-position: -30% 0; } }
 @keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .animated-bg__blob, .animated-bg__dots, .flag-ribbon::after, .hero-shine::after, .flag-wave, .flag-wave__shade, .fade-up {
+  .animated-bg__blob, .animated-bg__dots, .flag-ribbon::after, .hero-shine::after, .seal__glow, .seal__disc, .seal__shine, .fade-up {
     animation: none !important;
   }
 }

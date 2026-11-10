@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback } from "react";
 import { ManagementMessage } from "@/components/admin/ManagementUi";
 import { PersonPhoto } from "@/components/PersonPhoto";
-import { UzFlag } from "@/components/UzFlag";
+import { UniversitySeal } from "@/components/UniversitySeal";
 import { useT } from "@/lib/i18n";
 import { publicApi, type PublicFaculty } from "@/lib/publicApi";
 import { usePublicRequest } from "@/lib/usePublicRequest";
@@ -26,7 +26,7 @@ function FacultyCard({ faculty, position }: { faculty: PublicFaculty; position: 
   </Link>;
 }
 
-/** The head of all faculty leaders: one featured card, set apart from the faculty grid by size and a gold frame. */
+/** The University Leader: one featured card, set apart from the faculty grid by size and a gold frame. */
 function UniversityLeaderCard({ name, photoId }: { name: string | null; photoId: string | null }) {
   const t = useT();
   return <section aria-labelledby="university-leader" className="fade-up relative overflow-hidden rounded-3xl border-2 border-amber-300 bg-white/90 p-6 shadow-xl backdrop-blur md:p-8">
@@ -34,7 +34,7 @@ function UniversityLeaderCard({ name, photoId }: { name: string | null; photoId:
     <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
       <div className="rounded-full bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-500 p-1.5 shadow-lg"><PersonPhoto photoId={photoId} name={name} size="xl" /></div>
       <div className="min-w-0">
-        <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800"><span aria-hidden="true">★</span>{t("Universitet yetakchilari boshlig'i")}</p>
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800"><span aria-hidden="true">★</span>{t("Universitet yetakchisi")}</p>
         <h2 id="university-leader" className={`mt-3 text-2xl font-extrabold md:text-3xl ${name ? "text-slate-900" : "italic text-slate-400"}`}>{name ?? t("Tayinlanmagan")}</h2>
         <p className="mt-2 max-w-xl text-sm text-slate-600">{t("O'zMU Yoshlar ittifoqi. 13 fakultet yetakchisining ishini boshqaradi, hisobotlarni tasdiqlaydi va reytingni yuritadi.")}</p>
       </div>
@@ -70,8 +70,8 @@ export default function Home() {
           <Link href="/completed-work" className="btn rounded-lg px-4 py-2 text-white ring-1 ring-white/60 hover:bg-white/10">{t("Bajarilgan ishlar")}</Link>
         </div>
       </div>
-      <div className="mx-auto w-full max-w-xs md:max-w-sm">
-        <UzFlag />
+      <div className="mx-auto w-full max-w-[15rem] md:max-w-[18rem]">
+        <UniversitySeal priority />
       </div>
     </section>
 
