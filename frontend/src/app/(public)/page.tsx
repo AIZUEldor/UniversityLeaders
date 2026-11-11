@@ -29,7 +29,7 @@ function FacultyCard({ faculty, position }: { faculty: PublicFaculty; position: 
 /** The University Leader: one featured card, set apart from the faculty grid by size and a gold frame. */
 function UniversityLeaderCard({ name, photoId }: { name: string | null; photoId: string | null }) {
   const t = useT();
-  return <section aria-labelledby="university-leader" className="fade-up relative overflow-hidden rounded-3xl border-2 border-amber-300 bg-white/90 p-6 shadow-xl backdrop-blur md:p-8">
+  return <Link href="/universitet-yetakchisi" className="fade-up btn group relative block overflow-hidden rounded-3xl border-2 border-amber-300 bg-white/90 p-6 shadow-xl backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl md:p-8">
     <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400" />
     <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
       <div className="rounded-full bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-500 p-1.5 shadow-lg"><PersonPhoto photoId={photoId} name={name} size="xl" /></div>
@@ -37,9 +37,10 @@ function UniversityLeaderCard({ name, photoId }: { name: string | null; photoId:
         <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-800"><span aria-hidden="true">★</span>{t("Universitet yetakchisi")}</p>
         <h2 id="university-leader" className={`mt-3 text-2xl font-extrabold md:text-3xl ${name ? "text-slate-900" : "italic text-slate-400"}`}>{name ?? t("Tayinlanmagan")}</h2>
         <p className="mt-2 max-w-xl text-sm text-slate-600">{t("O'zMU Yoshlar ittifoqi. 13 fakultet yetakchisining ishini boshqaradi, hisobotlarni tasdiqlaydi va reytingni yuritadi.")}</p>
+        <span className="mt-3 inline-block text-sm font-semibold text-amber-800 transition group-hover:translate-x-0.5">{t("Profilni ko'rish →")}</span>
       </div>
     </div>
-  </section>;
+  </Link>;
 }
 
 function Stat({ value, label }: { value: string; label: string }) {

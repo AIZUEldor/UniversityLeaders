@@ -7,8 +7,8 @@ using UniversityLeaders.Domain.Enums;
 namespace UniversityLeaders.Application.Users;
 
 /// <summary>
-/// Account management: the University Leader manages faculty leaders and university coordinators; a faculty leader manages
-/// the faculty coordinators of their own faculty. One implementation, role-specific entry points.
+/// Account management: the University Leader manages faculty leaders and their own 7 university coordinators; a faculty
+/// leader manages the faculty coordinators of their own faculty. One implementation, role-specific entry points.
 /// </summary>
 public interface IUserManagementService
 {
@@ -20,7 +20,11 @@ public interface IUserManagementService
 
     Task<ManagedUserResponse> UpdateFacultyLeaderAsync(Guid actorId, Guid id, UpdateFacultyLeaderRequest request, CancellationToken cancellationToken);
 
+    // University coordinators: the University Leader's own 7 direction coordinators (profiles without a login, no faculty).
+    // List, get, deactivate and photos go through the role-based entry points with UserRole.UniversityCoordinator.
+    Task<ManagedUserResponse> CreateUniversityCoordinatorAsync(Guid actorId, CreateCoordinatorRequest request, CancellationToken cancellationToken);
 
+    Task<ManagedUserResponse> UpdateUniversityCoordinatorAsync(Guid actorId, Guid id, UpdateCoordinatorRequest request, CancellationToken cancellationToken);
 
     /// <summary>Soft deactivation: the account keeps its id, reports and audit history but can no longer log in; open sessions end.</summary>
     Task<ManagedUserResponse> DeactivateAsync(Guid actorId, UserRole role, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken);
@@ -30,9 +34,9 @@ public interface IUserManagementService
 
     Task<ManagedUserResponse> GetFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, CancellationToken cancellationToken);
 
-    Task<ManagedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken);
+    Task<ManagedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateCoordinatorRequest request, CancellationToken cancellationToken);
 
-    Task<ManagedUserResponse> UpdateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, UpdateFacultyCoordinatorRequest request, CancellationToken cancellationToken);
+    Task<ManagedUserResponse> UpdateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, UpdateCoordinatorRequest request, CancellationToken cancellationToken);
 
     Task<ManagedUserResponse> DeactivateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken);
 
@@ -118,6 +122,15 @@ internal sealed class UserManagementService : IUserManagementService
         return UpdateAsync(actorId, UserRole.FacultyLeader, id, request.FullName, request.FacultyId, null, null, request.Version, null, cancellationToken);
     }
 
+    public async Task<ManagedUserResponse> CreateUniversityCoordinatorAsync(Guid actorId, CreateCoordinatorRequest request, CancellationToken cancellationToken)
+    {
+        return ToResponse((await ProvisionAsync(actorId, UserRole.UniversityCoordinator, null, request.FullName, null, request.DirectionId, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), cancellationToken)).User);
+    }
+
+    public Task<ManagedUserResponse> UpdateUniversityCoordinatorAsync(Guid actorId, Guid id, UpdateCoordinatorRequest request, CancellationToken cancellationToken)
+    {
+        return UpdateAsync(actorId, UserRole.UniversityCoordinator, id, request.FullName, null, request.DirectionId, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), request.Version, null, cancellationToken);
+    }
 
     public Task<ManagedUserResponse> DeactivateAsync(Guid actorId, UserRole role, Guid id, DeactivateUserRequest request, CancellationToken cancellationToken)
     {
@@ -137,13 +150,13 @@ internal sealed class UserManagementService : IUserManagementService
         return ToResponse(await GetManagedAsync(UserRole.FacultyCoordinator, id, facultyId, cancellationToken));
     }
 
-    public async Task<ManagedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
+    public async Task<ManagedUserResponse> CreateFacultyCoordinatorAsync(Guid facultyLeaderId, CreateCoordinatorRequest request, CancellationToken cancellationToken)
     {
         int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
         return ToResponse((await ProvisionAsync(facultyLeaderId, UserRole.FacultyCoordinator, null, request.FullName, facultyId, request.DirectionId, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), cancellationToken)).User);
     }
 
-    public async Task<ManagedUserResponse> UpdateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, UpdateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
+    public async Task<ManagedUserResponse> UpdateFacultyCoordinatorAsync(Guid facultyLeaderId, Guid id, UpdateCoordinatorRequest request, CancellationToken cancellationToken)
     {
         int facultyId = await GetLeaderFacultyIdAsync(facultyLeaderId, cancellationToken);
         return await UpdateAsync(facultyLeaderId, UserRole.FacultyCoordinator, id, request.FullName, facultyId, request.DirectionId, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), request.Version, facultyId, cancellationToken);
@@ -487,7 +500,7 @@ internal sealed class UserManagementService : IUserManagementService
                 errors["facultyId"] = new[] { "An existing faculty is required." };
             }
         }
-        else if (role == UserRole.FacultyCoordinator)
+        else if (role is UserRole.FacultyCoordinator or UserRole.UniversityCoordinator)
         {
             if (directionId is null || !await _directions.ExistsAsync(directionId.Value, cancellationToken))
             {
@@ -503,6 +516,7 @@ internal sealed class UserManagementService : IUserManagementService
             throw role switch
             {
                 UserRole.FacultyLeader => new ConflictException("faculty_leader_exists", "This faculty already has an active faculty leader."),
+                UserRole.UniversityCoordinator => new ConflictException("coordinator_slot_taken", "This direction already has an active university coordinator."),
                 _ => new ConflictException("coordinator_slot_taken", "This direction already has an active coordinator in your faculty."),
             };
         }
@@ -525,14 +539,14 @@ internal sealed class UserManagementService : IUserManagementService
     }
 
     /// <summary>
-    /// Programming guard: the University Leader manages faculty leaders; faculty coordinators are only ever handled through
-    /// a faculty scope. University coordinators no longer exist as a managed role (historical rows are read-only).
+    /// Programming guard: the University Leader manages faculty leaders and university coordinators; faculty coordinators
+    /// are only ever handled through a faculty scope.
     /// </summary>
     private static void EnsureManageable(UserRole role, bool scoped)
     {
         bool valid = scoped
             ? role == UserRole.FacultyCoordinator
-            : role == UserRole.FacultyLeader;
+            : role is UserRole.FacultyLeader or UserRole.UniversityCoordinator;
         if (!valid)
         {
             throw new InvalidOperationException($"Role {role} cannot be managed {(scoped ? "within a faculty" : "by the University Leader")}.");

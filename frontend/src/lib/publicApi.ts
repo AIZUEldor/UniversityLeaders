@@ -21,6 +21,8 @@ export interface PublicFaculty {
 export interface PublicDirectory {
   universityLeaderName: string | null;
   universityLeaderPhotoId: string | null;
+  /** The University Leader's own 7 direction slots. */
+  universityCoordinators: PublicDirectionSlot[];
   faculties: PublicFaculty[];
 }
 

@@ -26,10 +26,11 @@
 |------|-------|-------|
 | University leader (Admin) | 1 | yes |
 | Faculty leaders | 13 | yes |
+| University coordinators (7 directions) | 7 | no — public profiles managed by the University Leader |
 | Faculty coordinators (7 directions × 13 faculties) | 91 | no — public profiles managed by their faculty leader |
 
-105 seats, only 14 logins. University coordinators were retired; the `UniversityCoordinator` role value exists only for
-historical rows. Only faculty leaders submit reports; only the University Leader approves them.
+112 seats, only 14 logins. Coordinators never sign in. Only faculty leaders submit reports; only the University Leader
+approves them.
 
 ### Reports
 

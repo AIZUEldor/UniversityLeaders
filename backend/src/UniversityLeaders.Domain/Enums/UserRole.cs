@@ -5,7 +5,7 @@ public enum UserRole
 {
     UniversityLeader = 1,
     FacultyLeader = 2,
-    /// <summary>Historical only: university coordinators were retired. Kept so existing rows, reports and audit stay valid.</summary>
+    /// <summary>The University Leader's own 7 direction coordinators: public profiles without a login and without a faculty.</summary>
     UniversityCoordinator = 3,
     FacultyCoordinator = 4,
 }

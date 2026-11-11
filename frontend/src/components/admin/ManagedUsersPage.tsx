@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ApiError } from "@/lib/api";
 import {
-  facultiesApi, facultyCoordinatorsApi, facultyLeadersApi,
+  facultiesApi, facultyCoordinatorsApi, facultyLeadersApi, universityCoordinatorsApi,
   type FacultyDto, type ManagedUserDto, type ProfileContact,
 } from "@/lib/adminApi";
 import { DIRECTIONS } from "@/lib/data";
@@ -11,8 +11,8 @@ import { useT } from "@/lib/i18n";
 import { ManagementMessage, ManagementPanel, TemporaryPassword, inputClass, primaryClass, secondaryClass } from "./ManagementUi";
 import { PhotoUploader } from "./PhotoUploader";
 
-/** Faculty leaders have a login (13 seats = faculties); faculty coordinators are profiles without login (7 seats = directions). */
-export type ManagementKind = "faculty-leaders" | "faculty-coordinators";
+/** Faculty leaders have a login (13 seats = faculties); coordinators are profiles without login (7 seats = directions). */
+export type ManagementKind = "faculty-leaders" | "faculty-coordinators" | "university-coordinators";
 interface Props { kind: ManagementKind; title: string; }
 interface Editor { id: string | null; userName: string; fullName: string; seatId: string; phone: string; phoneIsPublic: boolean; version: number | null; }
 interface Seat { id: number; name: string; }
@@ -21,12 +21,13 @@ const emptyEditor: Editor = { id: null, userName: "", fullName: "", seatId: "", 
 const SUBTITLES: Record<ManagementKind, string> = {
   "faculty-leaders": "13 fakultetning har biriga bitta yetakchi: login, vaqtinchalik parol, rasm va parolni tiklash.",
   "faculty-coordinators": "Fakultetingizdagi 7 yo'nalishning har biriga bitta koordinator. Koordinatorlar tizimga kirmaydi; F.I.Sh., rasm va ruxsat berilgan telefon raqami ommaviy profilingizda ko'rinadi.",
+  "university-coordinators": "Universitet yetakchisining 7 yo'nalishdagi o'z koordinatorlari. Koordinatorlar tizimga kirmaydi; F.I.Sh., rasm va ruxsat berilgan telefon raqami bosh sahifadagi yetakchi profilida ko'rinadi.",
 };
 
 export function ManagedUsersPage({ kind, title }: Props) {
   const t = useT();
   const isLeaders = kind === "faculty-leaders";
-  const coordinators = facultyCoordinatorsApi;
+  const coordinators = kind === "university-coordinators" ? universityCoordinatorsApi : facultyCoordinatorsApi;
   const photos = isLeaders ? facultyLeadersApi : coordinators;
   const [users, setUsers] = useState<ManagedUserDto[]>([]);
   const [faculties, setFaculties] = useState<FacultyDto[]>([]);
@@ -40,15 +41,15 @@ export function ManagedUsersPage({ kind, title }: Props) {
     setLoading(true);
     try {
       const [list, seats] = await Promise.all([
-        (kind === "faculty-leaders" ? facultyLeadersApi : facultyCoordinatorsApi).list(true),
-        kind === "faculty-leaders" ? facultiesApi.list() : Promise.resolve([] as FacultyDto[]),
+        (isLeaders ? facultyLeadersApi : coordinators).list(true),
+        isLeaders ? facultiesApi.list() : Promise.resolve([] as FacultyDto[]),
       ]);
       setUsers(list);
       setFaculties(seats);
       setError(null);
     } catch (failure: unknown) { setError(failure); }
     finally { setLoading(false); }
-  }, [kind]);
+  }, [isLeaders, coordinators]);
 
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
 

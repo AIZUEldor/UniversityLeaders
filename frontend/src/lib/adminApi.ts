@@ -8,7 +8,7 @@ export interface FacultyDto {
   version: number;
 }
 
-export type ManagedRole = "FacultyLeader" | "FacultyCoordinator";
+export type ManagedRole = "FacultyLeader" | "FacultyCoordinator" | "UniversityCoordinator";
 
 export interface ManagedUserDto {
   id: string;
@@ -89,14 +89,19 @@ export const facultyLeadersApi = {
     apiRequest<ProvisionedUserDto>(`/api/admin/faculty-leaders/${id}/reset-password`, { method: "POST", body: { version } }),
 };
 
-/**
- * Faculty coordinators: profiles without a login, managed by their own faculty leader. The faculty is resolved by the
- * API from the signed-in faculty leader; requests never contain facultyId.
- */
-export const facultyCoordinatorsApi = {
-  ...lifecycleApi("/api/faculty/coordinators"),
-  create: (fullName: string, directionId: number, contact: ProfileContact): Promise<ManagedUserDto> =>
-    apiRequest<ManagedUserDto>("/api/faculty/coordinators", { method: "POST", body: { fullName, directionId, ...contact } }),
-  update: (id: string, fullName: string, directionId: number, contact: ProfileContact, version: number): Promise<ManagedUserDto> =>
-    apiRequest<ManagedUserDto>(`/api/faculty/coordinators/${id}`, { method: "PUT", body: { fullName, directionId, ...contact, version } }),
-};
+/** Coordinators: profiles without a login, one per direction (1-7). Requests never contain facultyId. */
+function coordinatorsApi(base: string) {
+  return {
+    ...lifecycleApi(base),
+    create: (fullName: string, directionId: number, contact: ProfileContact): Promise<ManagedUserDto> =>
+      apiRequest<ManagedUserDto>(base, { method: "POST", body: { fullName, directionId, ...contact } }),
+    update: (id: string, fullName: string, directionId: number, contact: ProfileContact, version: number): Promise<ManagedUserDto> =>
+      apiRequest<ManagedUserDto>(`${base}/${id}`, { method: "PUT", body: { fullName, directionId, ...contact, version } }),
+  };
+}
+
+/** Managed by their own faculty leader; the API resolves the faculty from the signed-in leader. */
+export const facultyCoordinatorsApi = coordinatorsApi("/api/faculty/coordinators");
+
+/** The University Leader's own 7 coordinators (no faculty). */
+export const universityCoordinatorsApi = coordinatorsApi("/api/admin/university-coordinators");

@@ -7,12 +7,12 @@ public sealed record CreateFacultyLeaderRequest(string? UserName, string? FullNa
 public sealed record UpdateFacultyLeaderRequest(string? FullName, int? FacultyId, uint? Version);
 
 /// <summary>
-/// Faculty coordinators are public profiles without a login: no user name, no password. No FacultyId on purpose: a
-/// coordinator always belongs to the calling faculty leader's own faculty.
+/// Coordinators (faculty or university) are public profiles without a login: no user name, no password. No FacultyId on
+/// purpose: a faculty coordinator always belongs to the calling faculty leader's own faculty; a university coordinator has none.
 /// </summary>
-public sealed record CreateFacultyCoordinatorRequest(string? FullName, int? DirectionId, string? Phone, bool? PhoneIsPublic);
+public sealed record CreateCoordinatorRequest(string? FullName, int? DirectionId, string? Phone, bool? PhoneIsPublic);
 
-public sealed record UpdateFacultyCoordinatorRequest(string? FullName, int? DirectionId, string? Phone, bool? PhoneIsPublic, uint? Version);
+public sealed record UpdateCoordinatorRequest(string? FullName, int? DirectionId, string? Phone, bool? PhoneIsPublic, uint? Version);
 
 public sealed record DeactivateUserRequest(uint? Version);
 

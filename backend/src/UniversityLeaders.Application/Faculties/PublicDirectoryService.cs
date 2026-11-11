@@ -16,7 +16,9 @@ public sealed record PublicFacultyResponse(
 
 public sealed record PublicPhoto(byte[] Content, string ContentType);
 
-public sealed record PublicDirectoryResponse(string? UniversityLeaderName, Guid? UniversityLeaderPhotoId, IReadOnlyList<PublicFacultyResponse> Faculties);
+/// <summary><paramref name="UniversityCoordinators"/>: the University Leader's 7 direction slots, like a faculty's.</summary>
+public sealed record PublicDirectoryResponse(
+    string? UniversityLeaderName, Guid? UniversityLeaderPhotoId, IReadOnlyList<PublicDirectionSlotResponse> UniversityCoordinators, IReadOnlyList<PublicFacultyResponse> Faculties);
 
 public interface IPublicDirectoryService
 {
@@ -48,6 +50,7 @@ internal sealed class PublicDirectoryService : IPublicDirectoryService
         IReadOnlyList<User> universityLeaders = await _users.ListByRoleAsync(UserRole.UniversityLeader, null, false, cancellationToken);
         IReadOnlyList<User> facultyLeaders = await _users.ListByRoleAsync(UserRole.FacultyLeader, null, false, cancellationToken);
         IReadOnlyList<User> facultyCoordinators = await _users.ListByRoleAsync(UserRole.FacultyCoordinator, null, false, cancellationToken);
+        IReadOnlyList<User> universityCoordinators = await _users.ListByRoleAsync(UserRole.UniversityCoordinator, null, false, cancellationToken);
 
         List<PublicFacultyResponse> publicFaculties = faculties.Take(13).Select((Faculty faculty) =>
         {
@@ -58,7 +61,9 @@ internal sealed class PublicDirectoryService : IPublicDirectoryService
         }).ToList();
 
         User? universityLeader = universityLeaders.FirstOrDefault();
-        return new PublicDirectoryResponse(universityLeader?.FullName, universityLeader?.PhotoId, publicFaculties);
+        List<PublicDirectionSlotResponse> universitySlots = directions.Select((Direction direction) =>
+            Slot(direction, universityCoordinators.FirstOrDefault((User user) => user.DirectionId == direction.Id))).ToList();
+        return new PublicDirectoryResponse(universityLeader?.FullName, universityLeader?.PhotoId, universitySlots, publicFaculties);
     }
 
     public async Task<PublicPhoto?> GetPhotoAsync(Guid photoId, CancellationToken cancellationToken)

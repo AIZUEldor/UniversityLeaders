@@ -250,6 +250,55 @@ public sealed class FacultyCoordinatorTests : IAsyncLifetime
         HttpClient LeaderA, string CsrfA, Guid LeaderAId, HttpClient LeaderB, string CsrfB);
 
     /// <summary>University leader, two faculties, one faculty leader each (passwords already changed).</summary>
+    [Fact]
+    public async Task University_leader_manages_own_seven_coordinators_shown_on_the_public_directory()
+    {
+        const string University = "/api/admin/university-coordinators";
+        Scenario s = await ArrangeAsync();
+
+        HttpResponseMessage created = await s.Admin.PostAsync(University,
+            new { fullName = "Uni Coordinator", directionId = 3, facultyId = s.FacultyA, phone = "+998 90 765-43-21", phoneIsPublic = true }, s.AdminCsrf);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        JsonElement user = await created.Content.ReadFromJsonAsync<JsonElement>();
+        string id = user.GetProperty("id").GetString()!;
+        Assert.Equal("UniversityCoordinator", user.GetProperty("role").GetString());
+        Assert.Equal(JsonValueKind.Null, user.GetProperty("facultyId").ValueKind); // a forged facultyId is ignored
+        Assert.False(user.GetProperty("hasLogin").GetBoolean());
+
+        // One active coordinator per direction; a direction outside 1-7 is rejected.
+        Assert.Equal("coordinator_slot_taken", await ManagementSteps.AssertStatusAsync(
+            await s.Admin.PostAsync(University, new { fullName = "Second", directionId = 3 }, s.AdminCsrf), HttpStatusCode.Conflict));
+        Assert.Equal("validation_failed", await ManagementSteps.AssertStatusAsync(
+            await s.Admin.PostAsync(University, new { fullName = "Bad", directionId = 99 }, s.AdminCsrf), HttpStatusCode.BadRequest));
+
+        JsonElement directory = await _factory.CreateApiClient().GetFromJsonAsync<JsonElement>("/api/public/directory");
+        JsonElement slots = directory.GetProperty("universityCoordinators");
+        Assert.Equal(7, slots.GetArrayLength());
+        JsonElement slot = slots.EnumerateArray().Single((JsonElement item) => item.GetProperty("directionId").GetInt32() == 3);
+        Assert.Equal("Uni Coordinator", slot.GetProperty("coordinatorName").GetString());
+        Assert.Equal("+998 90 765-43-21", slot.GetProperty("phone").GetString());
+        Assert.All(directory.GetProperty("faculties").EnumerateArray(), (JsonElement faculty) => Assert.All(faculty.GetProperty("coordinators").EnumerateArray(),
+            (JsonElement item) => Assert.Equal(JsonValueKind.Null, item.GetProperty("coordinatorName").ValueKind))); // not a faculty coordinator
+
+        HttpResponseMessage edited = await s.Admin.SendJsonAsync(HttpMethod.Put, $"{University}/{id}",
+            new { fullName = "Moved Coordinator", directionId = 5, version = user.GetProperty("version").GetUInt32() }, s.AdminCsrf);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        user = await edited.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(5, user.GetProperty("directionId").GetInt32());
+        Assert.Equal(HttpStatusCode.OK, (await UploadPhotoAsync(s.Admin, s.AdminCsrf, $"{University}/{id}/photo", Png, "image/png")).StatusCode);
+
+        // Faculty leaders cannot manage them, and the faculty coordinator API cannot reach them.
+        Assert.Equal(HttpStatusCode.Forbidden, (await s.LeaderA.GetAsync(University)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await s.LeaderA.GetAsync($"{Coordinators}/{id}")).StatusCode);
+
+        user = await s.Admin.GetFromJsonAsync<JsonElement>($"{University}/{id}");
+        HttpResponseMessage deactivated = await s.Admin.PostAsync($"{University}/{id}/deactivate", new { version = user.GetProperty("version").GetUInt32() }, s.AdminCsrf);
+        Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+        directory = await _factory.CreateApiClient().GetFromJsonAsync<JsonElement>("/api/public/directory");
+        Assert.All(directory.GetProperty("universityCoordinators").EnumerateArray(),
+            (JsonElement item) => Assert.Equal(JsonValueKind.Null, item.GetProperty("coordinatorName").ValueKind));
+    }
+
     private async Task<Scenario> ArrangeAsync()
     {
         (HttpClient admin, string adminCsrf) = await _factory.SignInUniversityLeaderAsync();

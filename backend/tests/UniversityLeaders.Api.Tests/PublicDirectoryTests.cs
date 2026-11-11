@@ -14,12 +14,14 @@ public sealed class PublicDirectoryTests : IAsyncLifetime
     public Task DisposeAsync() => ((IAsyncLifetime)_factory).DisposeAsync();
 
     [Fact]
-    public async Task Directory_shows_only_active_names_and_all_seven_slots_without_private_fields_or_university_coordinators()
+    public async Task Directory_shows_only_active_names_and_all_seven_slots_without_private_fields()
     {
         HttpClient anonymous = _factory.CreateApiClient();
         JsonElement empty = await anonymous.GetFromJsonAsync<JsonElement>("/api/public/directory");
         Assert.Equal(0, empty.GetProperty("faculties").GetArrayLength());
-        Assert.False(empty.TryGetProperty("universityCoordinators", out _)); // retired role, not part of the public site
+        Assert.All(empty.GetProperty("universityCoordinators").EnumerateArray(), // 7 vacant slots of the University Leader
+            (JsonElement slot) => Assert.Equal(JsonValueKind.Null, slot.GetProperty("coordinatorName").ValueKind));
+        Assert.Equal(7, empty.GetProperty("universityCoordinators").GetArrayLength());
         Assert.Equal(JsonValueKind.Null, empty.GetProperty("universityLeaderName").ValueKind);
 
         (HttpClient admin, string adminCsrf) = await _factory.SignInUniversityLeaderAsync();

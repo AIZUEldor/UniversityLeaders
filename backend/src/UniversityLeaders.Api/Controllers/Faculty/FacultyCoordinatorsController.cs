@@ -38,14 +38,14 @@ public sealed class FacultyCoordinatorsController : ControllerBase
 
     /// <summary>Creates the coordinator profile (no login, no password) in the caller's own faculty.</summary>
     [HttpPost]
-    public async Task<ActionResult<ManagedUserResponse>> Create(CreateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ManagedUserResponse>> Create(CreateCoordinatorRequest request, CancellationToken cancellationToken)
     {
         ManagedUserResponse result = await _users.CreateFacultyCoordinatorAsync(User.GetUserId(), request, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<ActionResult<ManagedUserResponse>> Update(Guid id, UpdateFacultyCoordinatorRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ManagedUserResponse>> Update(Guid id, UpdateCoordinatorRequest request, CancellationToken cancellationToken)
     {
         return await _users.UpdateFacultyCoordinatorAsync(User.GetUserId(), id, request, cancellationToken);
     }

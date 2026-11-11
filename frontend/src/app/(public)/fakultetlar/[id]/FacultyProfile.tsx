@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { ManagementMessage } from "@/components/admin/ManagementUi";
 import { PersonPhoto } from "@/components/PersonPhoto";
 import { CompletedWorkPanel } from "@/components/public/CompletedWorkPanel";
+import { CoordinatorSlots } from "@/components/public/CoordinatorSlots";
 import { useT } from "@/lib/i18n";
 import { publicApi } from "@/lib/publicApi";
 import { usePublicRequest } from "@/lib/usePublicRequest";
@@ -27,16 +28,7 @@ export function FacultyProfile({ id }: { id: number }) {
           <p className="mt-1 inline-block rounded-full bg-white/15 px-3 py-0.5 text-sm ring-1 ring-white/25">{t("Fakultet yetakchisi")}</p>
         </div>
       </section>
-      <section><h2 className="mb-3 text-xl font-bold text-slate-900">{t("Yo'nalishlar va koordinatorlar")}</h2>
-        <ol className="grid gap-3 sm:grid-cols-2">{faculty.coordinators.map((slot) => <li key={slot.directionId} style={{ animationDelay: `${slot.directionId * 50}ms` }} className="fade-up flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md">
-          <PersonPhoto photoId={slot.photoId} name={slot.coordinatorName} size="md" />
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-indigo-700">{slot.directionId}. {t(slot.directionName)}</div>
-            <div className={`mt-1 ${slot.coordinatorName ? "font-medium text-slate-800" : "italic text-slate-400"}`}>{slot.coordinatorName ?? t("Koordinator tayinlanmagan")}</div>
-            {slot.phone && <a href={`tel:${slot.phone.replace(/[^+\d]/g, "")}`} className="text-sm text-indigo-700 hover:underline">{slot.phone}</a>}
-          </div>
-        </li>)}</ol>
-      </section>
+      <CoordinatorSlots slots={faculty.coordinators} />
       <section><h2 className="mb-3 text-xl font-bold text-slate-900">{t("Tasdiqlangan bajarilgan ishlar")}</h2><CompletedWorkPanel key={faculty.id} facultyId={faculty.id} /></section>
     </>}
   </div>;

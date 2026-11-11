@@ -187,7 +187,7 @@ public sealed class AdminManagementTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Faculty_rename_persists_and_university_coordinators_cannot_be_managed()
+    public async Task Faculty_rename_persists()
     {
         (HttpClient admin, string csrf) = await _factory.SignInUniversityLeaderAsync();
 
@@ -203,9 +203,6 @@ public sealed class AdminManagementTests : IAsyncLifetime
         Assert.Equal("Renamed Test Faculty", renamed.GetProperty("name").GetString());
         Assert.Equal("Programmes of the faculty.", renamed.GetProperty("description").GetString()); // trimmed
 
-        // University coordinators are retired: there is no management API for them any more.
-        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/admin/university-coordinators")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsync("/api/admin/university-coordinators", new { fullName = "X", directionId = 1 }, csrf)).StatusCode);
     }
 
     private async Task<(HttpClient Client, string Csrf)> SignInAdminWithChangedPasswordAsync(HttpClient pendingLeader)

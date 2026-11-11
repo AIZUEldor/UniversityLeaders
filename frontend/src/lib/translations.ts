@@ -157,6 +157,7 @@ const ru: Dictionary = {
   // managed users and faculties
   "13 fakultetning har biriga bitta yetakchi: login, vaqtinchalik parol, rasm va parolni tiklash.": "По одному лидеру на каждый из 13 факультетов: логин, временный пароль, фото и сброс пароля.",
   "Fakultetingizdagi 7 yo'nalishning har biriga bitta koordinator. Koordinatorlar tizimga kirmaydi; F.I.Sh., rasm va ruxsat berilgan telefon raqami ommaviy profilingizda ko'rinadi.": "По одному координатору на каждое из 7 направлений вашего факультета. Координаторы не входят в систему; ФИО, фото и разрешённый номер телефона видны в вашем публичном профиле.",
+  "Universitet yetakchisining 7 yo'nalishdagi o'z koordinatorlari. Koordinatorlar tizimga kirmaydi; F.I.Sh., rasm va ruxsat berilgan telefon raqami bosh sahifadagi yetakchi profilida ko'rinadi.": "Собственные координаторы лидера университета по 7 направлениям. Координаторы не входят в систему; ФИО, фото и разрешённый номер телефона видны в профиле лидера на главной странице.",
   "{name} profilini nofaol qilishni tasdiqlaysizmi? O'rin bo'shaydi, tarix saqlanadi.": "Деактивировать профиль {name}? Место освободится, история сохранится.",
   "{name} uchun yangi vaqtinchalik parol yaratilsinmi? Joriy parol va barcha ochiq sessiyalar bekor qilinadi.": "Создать новый временный пароль для {name}? Текущий пароль и все открытые сессии будут аннулированы.",
   "Yetakchi tayinlash": "Назначить лидера",
@@ -494,6 +495,7 @@ const en: Dictionary = {
   // managed users and faculties
   "13 fakultetning har biriga bitta yetakchi: login, vaqtinchalik parol, rasm va parolni tiklash.": "One leader for each of the 13 faculties: login, temporary password, photo and password reset.",
   "Fakultetingizdagi 7 yo'nalishning har biriga bitta koordinator. Koordinatorlar tizimga kirmaydi; F.I.Sh., rasm va ruxsat berilgan telefon raqami ommaviy profilingizda ko'rinadi.": "One coordinator for each of your faculty's 7 directions. Coordinators do not sign in; their full name, photo and permitted phone number appear on your public profile.",
+  "Universitet yetakchisining 7 yo'nalishdagi o'z koordinatorlari. Koordinatorlar tizimga kirmaydi; F.I.Sh., rasm va ruxsat berilgan telefon raqami bosh sahifadagi yetakchi profilida ko'rinadi.": "The University Leader's own coordinators for the 7 directions. Coordinators do not sign in; their full name, photo and permitted phone number appear on the leader's profile on the home page.",
   "{name} profilini nofaol qilishni tasdiqlaysizmi? O'rin bo'shaydi, tarix saqlanadi.": "Deactivate {name}'s profile? The seat is freed and the history is kept.",
   "{name} uchun yangi vaqtinchalik parol yaratilsinmi? Joriy parol va barcha ochiq sessiyalar bekor qilinadi.": "Create a new temporary password for {name}? The current password and all open sessions will be revoked.",
   "Yetakchi tayinlash": "Assign leader",
