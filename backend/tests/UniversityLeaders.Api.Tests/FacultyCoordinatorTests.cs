@@ -299,6 +299,38 @@ public sealed class FacultyCoordinatorTests : IAsyncLifetime
             (JsonElement item) => Assert.Equal(JsonValueKind.Null, item.GetProperty("coordinatorName").ValueKind));
     }
 
+    [Fact]
+    public async Task Leader_phones_are_public_only_with_consent()
+    {
+        Scenario s = await ArrangeAsync();
+        string leaders = "/api/admin/faculty-leaders";
+        JsonElement leader = await s.Admin.GetFromJsonAsync<JsonElement>($"{leaders}/{s.LeaderAId}");
+        HttpResponseMessage edited = await s.Admin.SendJsonAsync(HttpMethod.Put, $"{leaders}/{s.LeaderAId}",
+            new { fullName = "Leader A", facultyId = s.FacultyA, phone = "+998 91 111-22-33", phoneIsPublic = true, version = leader.GetProperty("version").GetUInt32() }, s.AdminCsrf);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+
+        HttpResponseMessage own = await s.Admin.SendJsonAsync(HttpMethod.Put, "/api/admin/profile/contact", new { phone = "+998 90 000-00-01", phoneIsPublic = true }, s.AdminCsrf);
+        Assert.Equal(HttpStatusCode.OK, own.StatusCode);
+        Assert.Equal("+998 90 000-00-01", (await s.Admin.GetFromJsonAsync<JsonElement>("/api/admin/profile")).GetProperty("phone").GetString());
+        Assert.Equal("validation_failed", await ManagementSteps.AssertStatusAsync(
+            await s.Admin.SendJsonAsync(HttpMethod.Put, "/api/admin/profile/contact", new { phone = "call me", phoneIsPublic = true }, s.AdminCsrf), HttpStatusCode.BadRequest));
+        Assert.Equal(HttpStatusCode.Forbidden, (await s.LeaderA.SendJsonAsync(HttpMethod.Put, "/api/admin/profile/contact", new { phone = "+998 90 000-00-02" }, s.CsrfA)).StatusCode);
+
+        JsonElement directory = await _factory.CreateApiClient().GetFromJsonAsync<JsonElement>("/api/public/directory");
+        Assert.Equal("+998 90 000-00-01", directory.GetProperty("universityLeaderPhone").GetString());
+        JsonElement facultyA = directory.GetProperty("faculties").EnumerateArray().Single((JsonElement f) => f.GetProperty("id").GetInt32() == s.FacultyA);
+        Assert.Equal("+998 91 111-22-33", facultyA.GetProperty("leaderPhone").GetString());
+
+        // Withdrawn consent hides the phone publicly but keeps it for management.
+        leader = await edited.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(HttpStatusCode.OK, (await s.Admin.SendJsonAsync(HttpMethod.Put, $"{leaders}/{s.LeaderAId}",
+            new { fullName = "Leader A", facultyId = s.FacultyA, phone = "+998 91 111-22-33", phoneIsPublic = false, version = leader.GetProperty("version").GetUInt32() }, s.AdminCsrf)).StatusCode);
+        directory = await _factory.CreateApiClient().GetFromJsonAsync<JsonElement>("/api/public/directory");
+        facultyA = directory.GetProperty("faculties").EnumerateArray().Single((JsonElement f) => f.GetProperty("id").GetInt32() == s.FacultyA);
+        Assert.Equal(JsonValueKind.Null, facultyA.GetProperty("leaderPhone").ValueKind);
+        Assert.Equal("+998 91 111-22-33", (await s.Admin.GetFromJsonAsync<JsonElement>($"{leaders}/{s.LeaderAId}")).GetProperty("phone").GetString());
+    }
+
     private async Task<Scenario> ArrangeAsync()
     {
         (HttpClient admin, string adminCsrf) = await _factory.SignInUniversityLeaderAsync();

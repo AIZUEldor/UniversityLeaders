@@ -2,9 +2,9 @@ using UniversityLeaders.Domain.Enums;
 
 namespace UniversityLeaders.Application.Users;
 
-public sealed record CreateFacultyLeaderRequest(string? UserName, string? FullName, int? FacultyId);
+public sealed record CreateFacultyLeaderRequest(string? UserName, string? FullName, int? FacultyId, string? Phone, bool? PhoneIsPublic);
 
-public sealed record UpdateFacultyLeaderRequest(string? FullName, int? FacultyId, uint? Version);
+public sealed record UpdateFacultyLeaderRequest(string? FullName, int? FacultyId, string? Phone, bool? PhoneIsPublic, uint? Version);
 
 /// <summary>
 /// Coordinators (faculty or university) are public profiles without a login: no user name, no password. No FacultyId on
@@ -39,7 +39,7 @@ public sealed record ManagedUserResponse(
     string? Phone,
     bool PhoneIsPublic);
 
-/// <summary>Coordinator contact details. The phone is optional and public only with explicit consent.</summary>
+/// <summary>Contact details of a public profile (leader or coordinator). The phone is optional and public only with explicit consent.</summary>
 public sealed record ProfileContact(string? Phone, bool PhoneIsPublic);
 
 /// <summary>Public profile photos: JPEG or PNG, at most 1 MB (the web client downsizes before uploading).</summary>

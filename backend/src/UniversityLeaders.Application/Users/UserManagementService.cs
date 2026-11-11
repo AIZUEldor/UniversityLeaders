@@ -58,6 +58,11 @@ public interface IUserManagementService
 
     Task<ManagedUserResponse> RemoveOwnPhotoAsync(Guid universityLeaderId, CancellationToken cancellationToken);
 
+    Task<ManagedUserResponse> GetOwnProfileAsync(Guid universityLeaderId, CancellationToken cancellationToken);
+
+    /// <summary>University Leader sets their own phone and whether it is shown on the public site.</summary>
+    Task<ManagedUserResponse> SetOwnContactAsync(Guid universityLeaderId, ProfileContact contact, CancellationToken cancellationToken);
+
     /// <summary>Offline recovery for the University Leader; only reachable from the server-side CLI command, never over HTTP.</summary>
     Task<ProvisionedUserResponse> RecoverUniversityLeaderAsync(string? userName, CancellationToken cancellationToken);
 }
@@ -112,14 +117,14 @@ internal sealed class UserManagementService : IUserManagementService
 
     public async Task<ProvisionedUserResponse> CreateFacultyLeaderAsync(Guid actorId, CreateFacultyLeaderRequest request, CancellationToken cancellationToken)
     {
-        (User user, string? temporaryPassword) = await ProvisionAsync(actorId, UserRole.FacultyLeader, request.UserName, request.FullName, request.FacultyId, null, null, cancellationToken);
+        (User user, string? temporaryPassword) = await ProvisionAsync(actorId, UserRole.FacultyLeader, request.UserName, request.FullName, request.FacultyId, null, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), cancellationToken);
         return new ProvisionedUserResponse(ToResponse(user), temporaryPassword!); // a login role always gets one
     }
 
 
     public Task<ManagedUserResponse> UpdateFacultyLeaderAsync(Guid actorId, Guid id, UpdateFacultyLeaderRequest request, CancellationToken cancellationToken)
     {
-        return UpdateAsync(actorId, UserRole.FacultyLeader, id, request.FullName, request.FacultyId, null, null, request.Version, null, cancellationToken);
+        return UpdateAsync(actorId, UserRole.FacultyLeader, id, request.FullName, request.FacultyId, null, new ProfileContact(request.Phone, request.PhoneIsPublic ?? false), request.Version, null, cancellationToken);
     }
 
     public async Task<ManagedUserResponse> CreateUniversityCoordinatorAsync(Guid actorId, CreateCoordinatorRequest request, CancellationToken cancellationToken)
@@ -203,6 +208,32 @@ internal sealed class UserManagementService : IUserManagementService
     public async Task<ManagedUserResponse> RemoveOwnPhotoAsync(Guid universityLeaderId, CancellationToken cancellationToken)
     {
         return await ClearPhotoAsync(universityLeaderId, await GetActiveUniversityLeaderAsync(universityLeaderId, cancellationToken), cancellationToken);
+    }
+
+    public async Task<ManagedUserResponse> GetOwnProfileAsync(Guid universityLeaderId, CancellationToken cancellationToken)
+    {
+        return ToResponse(await GetActiveUniversityLeaderAsync(universityLeaderId, cancellationToken));
+    }
+
+    public async Task<ManagedUserResponse> SetOwnContactAsync(Guid universityLeaderId, ProfileContact contact, CancellationToken cancellationToken)
+    {
+        Dictionary<string, string[]> errors = new Dictionary<string, string[]>();
+        string? phone = InputRules.Phone(contact.Phone, errors);
+        InputRules.ThrowIfInvalid(errors);
+
+        User user = await GetActiveUniversityLeaderAsync(universityLeaderId, cancellationToken);
+        bool phoneIsPublic = phone is not null && contact.PhoneIsPublic;
+        if (user.Phone == phone && user.PhoneIsPublic == phoneIsPublic)
+        {
+            return ToResponse(user);
+        }
+
+        user.Phone = phone;
+        user.PhoneIsPublic = phoneIsPublic;
+        _audit.Add(Audit.Entry(universityLeaderId, AuditActions.UserUpdated, nameof(User), user.Id.ToString(),
+            new { user.UserName, Role = user.Role.ToString(), ContactChanged = true }, _time.GetUtcNow()));
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ToResponse(user);
     }
 
     public async Task<ProvisionedUserResponse> RecoverUniversityLeaderAsync(string? userName, CancellationToken cancellationToken)
@@ -437,7 +468,7 @@ internal sealed class UserManagementService : IUserManagementService
         return (bytes, Attachments.AttachmentInspector.ContentType(kind!.Value)); // checked just above
     }
 
-    /// <param name="contact">Null keeps the stored contact (faculty leaders); coordinators always send their contact.</param>
+    /// <param name="contact">Null keeps the stored contact; every current caller sends it.</param>
     private async Task<ManagedUserResponse> UpdateAsync(
         Guid actorId, UserRole role, Guid id, string? rawFullName, int? facultyId, int? directionId, ProfileContact? contact, uint? rawVersion,
         int? scopeFacultyId, CancellationToken cancellationToken)

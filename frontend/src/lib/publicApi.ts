@@ -15,12 +15,16 @@ export interface PublicFaculty {
   description: string | null;
   leaderName: string | null;
   leaderPhotoId: string | null;
+  /** Present only when the leader agreed to publish it. */
+  leaderPhone: string | null;
   coordinators: PublicDirectionSlot[];
 }
 
 export interface PublicDirectory {
   universityLeaderName: string | null;
   universityLeaderPhotoId: string | null;
+  /** Present only when the University Leader agreed to publish it. */
+  universityLeaderPhone: string | null;
   /** The University Leader's own 7 direction slots. */
   universityCoordinators: PublicDirectionSlot[];
   faculties: PublicFaculty[];

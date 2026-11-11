@@ -32,6 +32,19 @@ public sealed class ProfileController : ControllerBase
         return await _users.SetOwnPhotoAsync(User.GetUserId(), new AttachmentUpload(file?.FileName, file?.ContentType, file?.Length ?? 0, content), cancellationToken);
     }
 
+    [HttpGet]
+    public async Task<ActionResult<ManagedUserResponse>> Get(CancellationToken cancellationToken)
+    {
+        return await _users.GetOwnProfileAsync(User.GetUserId(), cancellationToken);
+    }
+
+    /// <summary>Own phone; shown on the public site only when phoneIsPublic is true.</summary>
+    [HttpPut("contact")]
+    public async Task<ActionResult<ManagedUserResponse>> SetContact(ProfileContact request, CancellationToken cancellationToken)
+    {
+        return await _users.SetOwnContactAsync(User.GetUserId(), request, cancellationToken);
+    }
+
     [HttpDelete("photo")]
     public async Task<ActionResult<ManagedUserResponse>> RemovePhoto(CancellationToken cancellationToken)
     {

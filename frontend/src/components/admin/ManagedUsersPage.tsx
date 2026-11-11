@@ -87,10 +87,10 @@ export function ManagedUsersPage({ kind, title }: Props) {
     const contact: ProfileContact = { phone: editor.phone.trim(), phoneIsPublic: editor.phoneIsPublic && editor.phone.trim() !== "" };
     void runAction(async () => {
       if (isLeaders && editor.id === null) {
-        const result = await facultyLeadersApi.create(editor.userName.trim(), editor.fullName.trim(), seatId);
+        const result = await facultyLeadersApi.create(editor.userName.trim(), editor.fullName.trim(), seatId, contact);
         setPassword({ userName: result.user.userName, value: result.temporaryPassword });
       } else if (isLeaders && editor.version !== null && editor.id !== null) {
-        await facultyLeadersApi.update(editor.id, editor.fullName.trim(), seatId, editor.version);
+        await facultyLeadersApi.update(editor.id, editor.fullName.trim(), seatId, contact, editor.version);
       } else if (editor.id === null) {
         await coordinators.create(editor.fullName.trim(), seatId, contact);
       } else if (editor.version !== null) {
@@ -131,10 +131,8 @@ export function ManagedUsersPage({ kind, title }: Props) {
             {seats.map((seat) => <option key={seat.id} value={seat.id} disabled={occupiedByOther(seat.id)}>{seat.name}{occupiedByOther(seat.id) ? ` (${t("band")})` : ""}</option>)}
           </select>
         </label>
-        {!isLeaders && <>
-          <label className="text-sm">{t("Telefon raqami (ixtiyoriy)")}<input type="tel" inputMode="tel" maxLength={20} placeholder="+998 90 123-45-67" value={editor.phone} onChange={(event) => setEditor({ ...editor, phone: event.target.value })} className={`${inputClass} mt-1`} /></label>
-          <label className="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" checked={editor.phoneIsPublic} disabled={editor.phone.trim() === ""} onChange={(event) => setEditor({ ...editor, phoneIsPublic: event.target.checked })} />{t("Telefon raqamini ommaviy saytda ko'rsatishga koordinator rozilik bergan")}</label>
-        </>}
+        <label className="text-sm">{t("Telefon raqami (ixtiyoriy)")}<input type="tel" inputMode="tel" maxLength={20} placeholder="+998 90 123-45-67" value={editor.phone} onChange={(event) => setEditor({ ...editor, phone: event.target.value })} className={`${inputClass} mt-1`} /></label>
+          <label className="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" checked={editor.phoneIsPublic} disabled={editor.phone.trim() === ""} onChange={(event) => setEditor({ ...editor, phoneIsPublic: event.target.checked })} />{t(isLeaders ? "Telefon raqamini ommaviy saytda ko'rsatishga yetakchi rozilik bergan" : "Telefon raqamini ommaviy saytda ko'rsatishga koordinator rozilik bergan")}</label>
         <div className="flex items-end gap-2 md:col-span-2">
           <button disabled={busy || loading || occupiedByOther(Number(editor.seatId))} className={primaryClass}>{t(busy ? "Saqlanmoqda..." : editor.id ? "Saqlash" : "Yaratish")}</button>
           {(editor.id || editor.seatId) && <button type="button" onClick={() => setEditor(emptyEditor)} className={secondaryClass}>{t("Bekor qilish")}</button>}

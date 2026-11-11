@@ -6,6 +6,7 @@ import { ManagementMessage } from "@/components/admin/ManagementUi";
 import { PersonPhoto } from "@/components/PersonPhoto";
 import { CompletedWorkPanel } from "@/components/public/CompletedWorkPanel";
 import { CoordinatorSlots } from "@/components/public/CoordinatorSlots";
+import { PhoneLink } from "@/components/public/PhoneLink";
 import { useT } from "@/lib/i18n";
 import { publicApi } from "@/lib/publicApi";
 import { usePublicRequest } from "@/lib/usePublicRequest";
@@ -26,6 +27,7 @@ export function FacultyProfile({ id }: { id: number }) {
           {faculty.description && <div className="text-sm text-white/80">{faculty.description}</div>}
           <h1 className="mt-2 text-2xl font-extrabold md:text-3xl">{faculty.leaderName ?? t("Yetakchi tayinlanmagan")}</h1>
           <p className="mt-1 inline-block rounded-full bg-white/15 px-3 py-0.5 text-sm ring-1 ring-white/25">{t("Fakultet yetakchisi")}</p>
+          {faculty.leaderPhone && <PhoneLink phone={faculty.leaderPhone} className="mt-2 block font-semibold text-white underline-offset-2 hover:underline" />}
         </div>
       </section>
       <CoordinatorSlots slots={faculty.coordinators} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { PersonPhoto } from "@/components/PersonPhoto";
+import { PhoneLink } from "@/components/public/PhoneLink";
 import { useT } from "@/lib/i18n";
 import type { PublicDirectionSlot } from "@/lib/publicApi";
 
@@ -13,7 +14,7 @@ export function CoordinatorSlots({ slots }: { slots: PublicDirectionSlot[] }) {
       <div className="min-w-0">
         <div className="text-xs font-semibold text-indigo-700">{slot.directionId}. {t(slot.directionName)}</div>
         <div className={`mt-1 ${slot.coordinatorName ? "font-medium text-slate-800" : "italic text-slate-400"}`}>{slot.coordinatorName ?? t("Koordinator tayinlanmagan")}</div>
-        {slot.phone && <a href={`tel:${slot.phone.replace(/[^+\d]/g, "")}`} className="text-sm text-indigo-700 hover:underline">{slot.phone}</a>}
+        {slot.phone && <PhoneLink phone={slot.phone} />}
       </div>
     </li>)}</ol>
   </section>;

@@ -11,14 +11,15 @@ namespace UniversityLeaders.Application.Faculties;
 /// <summary><paramref name="Phone"/> is set only when the coordinator agreed to publish it.</summary>
 public sealed record PublicDirectionSlotResponse(int DirectionId, string DirectionName, string? CoordinatorName, Guid? PhotoId, string? Phone);
 
+/// <summary>Leader phones (<paramref name="LeaderPhone"/>, UniversityLeaderPhone) are set only when the leader agreed to publish them.</summary>
 public sealed record PublicFacultyResponse(
-    int Id, string Name, string? Description, string? LeaderName, Guid? LeaderPhotoId, IReadOnlyList<PublicDirectionSlotResponse> Coordinators);
+    int Id, string Name, string? Description, string? LeaderName, Guid? LeaderPhotoId, string? LeaderPhone, IReadOnlyList<PublicDirectionSlotResponse> Coordinators);
 
 public sealed record PublicPhoto(byte[] Content, string ContentType);
 
 /// <summary><paramref name="UniversityCoordinators"/>: the University Leader's 7 direction slots, like a faculty's.</summary>
 public sealed record PublicDirectoryResponse(
-    string? UniversityLeaderName, Guid? UniversityLeaderPhotoId, IReadOnlyList<PublicDirectionSlotResponse> UniversityCoordinators, IReadOnlyList<PublicFacultyResponse> Faculties);
+    string? UniversityLeaderName, Guid? UniversityLeaderPhotoId, string? UniversityLeaderPhone, IReadOnlyList<PublicDirectionSlotResponse> UniversityCoordinators, IReadOnlyList<PublicFacultyResponse> Faculties);
 
 public interface IPublicDirectoryService
 {
@@ -55,7 +56,7 @@ internal sealed class PublicDirectoryService : IPublicDirectoryService
         List<PublicFacultyResponse> publicFaculties = faculties.Take(13).Select((Faculty faculty) =>
         {
             User? leader = facultyLeaders.FirstOrDefault((User user) => user.FacultyId == faculty.Id);
-            return new PublicFacultyResponse(faculty.Id, faculty.Name, faculty.Description, leader?.FullName, leader?.PhotoId,
+            return new PublicFacultyResponse(faculty.Id, faculty.Name, faculty.Description, leader?.FullName, leader?.PhotoId, PublicPhone(leader),
                 directions.Select((Direction direction) =>
                     Slot(direction, facultyCoordinators.FirstOrDefault((User user) => user.FacultyId == faculty.Id && user.DirectionId == direction.Id))).ToList());
         }).ToList();
@@ -63,7 +64,7 @@ internal sealed class PublicDirectoryService : IPublicDirectoryService
         User? universityLeader = universityLeaders.FirstOrDefault();
         List<PublicDirectionSlotResponse> universitySlots = directions.Select((Direction direction) =>
             Slot(direction, universityCoordinators.FirstOrDefault((User user) => user.DirectionId == direction.Id))).ToList();
-        return new PublicDirectoryResponse(universityLeader?.FullName, universityLeader?.PhotoId, universitySlots, publicFaculties);
+        return new PublicDirectoryResponse(universityLeader?.FullName, universityLeader?.PhotoId, PublicPhone(universityLeader), universitySlots, publicFaculties);
     }
 
     public async Task<PublicPhoto?> GetPhotoAsync(Guid photoId, CancellationToken cancellationToken)
@@ -74,7 +75,11 @@ internal sealed class PublicDirectoryService : IPublicDirectoryService
 
     private static PublicDirectionSlotResponse Slot(Direction direction, User? coordinator)
     {
-        return new PublicDirectionSlotResponse(direction.Id, direction.Name, coordinator?.FullName, coordinator?.PhotoId,
-            coordinator is { PhoneIsPublic: true } ? coordinator.Phone : null);
+        return new PublicDirectionSlotResponse(direction.Id, direction.Name, coordinator?.FullName, coordinator?.PhotoId, PublicPhone(coordinator));
+    }
+
+    private static string? PublicPhone(User? user)
+    {
+        return user is { PhoneIsPublic: true } ? user.Phone : null;
     }
 }

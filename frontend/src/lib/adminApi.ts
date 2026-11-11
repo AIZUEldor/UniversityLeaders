@@ -35,7 +35,7 @@ export interface ProvisionedUserDto {
   temporaryPassword: string;
 }
 
-/** Coordinator contact; the phone is shown publicly only with explicit consent. */
+/** Leader or coordinator contact; the phone is shown publicly only with explicit consent. */
 export interface ProfileContact {
   phone: string;
   phoneIsPublic: boolean;
@@ -74,16 +74,21 @@ function lifecycleApi(base: string) {
   };
 }
 
-/** The signed-in University Leader's own public photo (featured on the public home page). */
-export const ownProfileApi = photoApi("/api/admin/profile");
+/** The signed-in University Leader's own public profile (featured on the public home page): photo and phone. */
+export const ownProfileApi = {
+  ...photoApi("/api/admin/profile"),
+  get: (): Promise<ManagedUserDto> => apiRequest<ManagedUserDto>("/api/admin/profile"),
+  setContact: (contact: ProfileContact): Promise<ManagedUserDto> =>
+    apiRequest<ManagedUserDto>("/api/admin/profile/contact", { method: "PUT", body: { ...contact } }),
+};
 
 /** Faculty leaders have a login: user name, one-time temporary password and password reset. */
 export const facultyLeadersApi = {
   ...lifecycleApi("/api/admin/faculty-leaders"),
-  create: (userName: string, fullName: string, facultyId: number): Promise<ProvisionedUserDto> =>
-    apiRequest<ProvisionedUserDto>("/api/admin/faculty-leaders", { method: "POST", body: { userName, fullName, facultyId } }),
-  update: (id: string, fullName: string, facultyId: number, version: number): Promise<ManagedUserDto> =>
-    apiRequest<ManagedUserDto>(`/api/admin/faculty-leaders/${id}`, { method: "PUT", body: { fullName, facultyId, version } }),
+  create: (userName: string, fullName: string, facultyId: number, contact: ProfileContact): Promise<ProvisionedUserDto> =>
+    apiRequest<ProvisionedUserDto>("/api/admin/faculty-leaders", { method: "POST", body: { userName, fullName, facultyId, ...contact } }),
+  update: (id: string, fullName: string, facultyId: number, contact: ProfileContact, version: number): Promise<ManagedUserDto> =>
+    apiRequest<ManagedUserDto>(`/api/admin/faculty-leaders/${id}`, { method: "PUT", body: { fullName, facultyId, ...contact, version } }),
   /** New one-time temporary password; the account must change it and all its sessions end. */
   resetPassword: (id: string, version: number): Promise<ProvisionedUserDto> =>
     apiRequest<ProvisionedUserDto>(`/api/admin/faculty-leaders/${id}/reset-password`, { method: "POST", body: { version } }),

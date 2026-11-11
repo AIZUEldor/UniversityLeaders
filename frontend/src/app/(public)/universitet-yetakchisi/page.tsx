@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { ManagementMessage } from "@/components/admin/ManagementUi";
 import { PersonPhoto } from "@/components/PersonPhoto";
 import { CoordinatorSlots } from "@/components/public/CoordinatorSlots";
+import { PhoneLink } from "@/components/public/PhoneLink";
 import { useT } from "@/lib/i18n";
 import { publicApi } from "@/lib/publicApi";
 import { usePublicRequest } from "@/lib/usePublicRequest";
@@ -24,6 +25,7 @@ export default function UniversityLeaderProfile() {
           <div className="text-xs font-semibold uppercase tracking-wide text-white/90">{t("O'zMU Yoshlar ittifoqi")}</div>
           <h1 className="mt-2 text-2xl font-extrabold md:text-3xl">{data.universityLeaderName ?? t("Tayinlanmagan")}</h1>
           <p className="mt-1 inline-block rounded-full bg-white/20 px-3 py-0.5 text-sm ring-1 ring-white/30">{t("Universitet yetakchisi")}</p>
+          {data.universityLeaderPhone && <PhoneLink phone={data.universityLeaderPhone} className="mt-2 block font-semibold text-white underline-offset-2 hover:underline" />}
         </div>
       </section>
       <CoordinatorSlots slots={data.universityCoordinators} />
